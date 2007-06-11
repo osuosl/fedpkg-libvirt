@@ -8,17 +8,11 @@
 
 Summary: Library providing a simple API virtualization
 Name: libvirt
-Version: 0.2.2
-Release: 4%{?_extra_release}
+Version: 0.2.3
+Release: 1%{?_extra_release}
 License: LGPL
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
-Patch1: libvirt-0.2.2-disable-xm.patch
-Patch2: libvirt-0.2.2-dnsmasq-order.patch
-Patch3: libvirt-0.2.2-qemu-noreboot.patch
-Patch4: libvirt-0.2.2-sync-daemon-restart.patch
-Patch5: libvirt-0.2.2-graphics-hvm.patch
-Patch6: libvirt-0.2.2-bridge-init.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 URL: http://libvirt.org/
 BuildRequires: python python-devel
@@ -60,17 +54,11 @@ Obsoletes: libvir-python
 %description python
 The libvirt-python package contains a module that permits applications
 written in the Python programming language to use the interface
-supplied by the libvirt library to use the the virtualization capabilities
+supplied by the libvirt library to use the the virtualization capabilities 
 of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
-%patch1 -p1
-%patch2 -p1
-%patch3 -p1
-%patch4 -p1
-%patch5 -p1
-%patch6 -p1
 
 %build
 %configure --with-init-script=redhat --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid
@@ -150,6 +138,7 @@ fi
 %{_datadir}/libvirt/networks/default.xml
 %dir %{_localstatedir}/run/libvirt/
 %dir %{_localstatedir}/lib/libvirt/
+%dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/qemu/
 %attr(4755, root, root) %{_libexecdir}/libvirt_proxy
 %attr(0755, root, root) %{_sbindir}/libvirt_qemud
 %doc docs/libvirt.rng
@@ -182,6 +171,12 @@ fi
 %doc docs/examples/python
 
 %changelog
+* Mon Jun 11 2007 Daniel Veillard <veillard@redhat.com> - 0.2.3-1.fc7
+- Release of 0.2.3
+- lot of assorted bugfixes and cleanups
+- support for Xen-3.1
+- new scheduler API
+
 * Mon May 14 2007 Daniel P. Berrange <berrange@redhat.com> - 0.2.2-4.fc7
 - Fixed uninitialized value causing stack overflow
 - Fixed bridged networking when no virtual network is defined (bz 239273)
