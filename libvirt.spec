@@ -1,15 +1,9 @@
 # -*- rpm-spec -*-
 
-# This macro is used for the continuous automated builds. It just
-# allows an extra fragment based on the timestamp to be appended
-# to the release. This distinguishes automated builds, from formal
-# Fedora RPM builds
-%define _extra_release %{?dist:%{dist}}%{!?dist:%{?extra_release:%{extra_release}}}
-
 Summary: Library providing a simple API virtualization
 Name: libvirt
-Version: 0.2.3
-Release: 1%{?_extra_release}
+Version: 0.3.0
+Release: 1%{?dist}%{?extra_release}
 License: LGPL
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
@@ -20,13 +14,14 @@ Requires: libxml2
 Requires: readline
 Requires: ncurses
 Requires: dnsmasq
+Requires: bridge-utils
+Requires: iptables
 BuildRequires: xen-devel
 BuildRequires: libxml2-devel
 BuildRequires: readline-devel
 BuildRequires: ncurses-devel
 BuildRequires: gettext
-BuildRequires: libsysfs-devel
-BuildRequires: /sbin/iptables
+BuildRequires: gnutls-devel
 Obsoletes: libvir
 ExclusiveArch: i386 x86_64 ia64
 
@@ -61,14 +56,15 @@ of recent versions of Linux (and other OSes).
 %setup -q
 
 %build
-%configure --with-init-script=redhat --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid
+%configure --with-init-script=redhat --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid --with-remote-file=%{_localstatedir}/run/libvirtd.pid
 make
 
 %install
 rm -fr %{buildroot}
 
 %makeinstall
-(cd docs/examples ; make clean ; rm -rf .deps)
+(cd docs/examples ; make clean ; rm -rf .deps Makefile Makefile.in)
+(cd docs/examples/python ; rm -f Makefile Makefile.in)
 rm -f $RPM_BUILD_ROOT%{_libdir}/*.la
 rm -f $RPM_BUILD_ROOT%{_libdir}/*.a
 rm -f $RPM_BUILD_ROOT%{_libdir}/python*/site-packages/*.la
@@ -129,10 +125,7 @@ fi
 %dir %attr(0700, root, root) %{_sysconfdir}/libvirt/qemu/networks/
 %dir %attr(0700, root, root) %{_sysconfdir}/libvirt/qemu/networks/autostart
 %{_sysconfdir}/rc.d/init.d/libvirtd
-%dir %{_sysconfdir}/libvirt
-%dir %{_sysconfdir}/libvirt/qemu
-%dir %{_sysconfdir}/libvirt/qemu/networks
-%dir %{_sysconfdir}/libvirt/qemu/networks/autostart
+%config(noreplace) %{_sysconfdir}/sysconfig/libvirtd
 %dir %{_datadir}/libvirt/
 %dir %{_datadir}/libvirt/networks/
 %{_datadir}/libvirt/networks/default.xml
@@ -140,7 +133,7 @@ fi
 %dir %{_localstatedir}/lib/libvirt/
 %dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/qemu/
 %attr(4755, root, root) %{_libexecdir}/libvirt_proxy
-%attr(0755, root, root) %{_sbindir}/libvirt_qemud
+%attr(0755, root, root) %{_sbindir}/libvirtd
 %doc docs/libvirt.rng
 
 %files devel
@@ -171,27 +164,20 @@ fi
 %doc docs/examples/python
 
 %changelog
-* Mon Jun 11 2007 Daniel Veillard <veillard@redhat.com> - 0.2.3-1.fc7
+* Mon Jul  9 2007 Daniel Veillard <veillard@redhat.com> - 0.3.0-1.fc7
+- Release of 0.3.0
+- Secure remote access support
+- unification of daemons
+- lots of assorted bugfixes and cleanups
+- documentation and localization improvements
+
+* Fri Jun  8 2007 Daniel Veillard <veillard@redhat.com> - 0.2.3-1.fc7
 - Release of 0.2.3
 - lot of assorted bugfixes and cleanups
 - support for Xen-3.1
 - new scheduler API
 
-* Mon May 14 2007 Daniel P. Berrange <berrange@redhat.com> - 0.2.2-4.fc7
-- Fixed uninitialized value causing stack overflow
-- Fixed bridged networking when no virtual network is defined (bz 239273)
-
-* Thu May  3 2007 Daniel P. Berrange <berrange@redhat.com> - 0.2.2-3.fc7
-- Fixed init script restart race
-- Remove duplicate <graphics> tag for HVM
-- Support -no-reboot in qemu for installs
-- Disable xm config file driver for 3.0.5
-- Force dnsmasq ordering for resolv.conf
-
-* Fri Apr 21 2007 Daniel P. Berrange <berrange@redhat.com> - 0.2.2-2.fc7
-- Added Requires on dnsmasq for virtual networking
-
-* Tue Apr 17 2007 Daniel Veillard <veillard@redhat.com> - 0.2.2-1.fc7
+* Tue Apr 17 2007 Daniel Veillard <veillard@redhat.com> - 0.2.2-1
 - Release of 0.2.2
 - lot of assorted bugfixes and cleanups
 - preparing for Xen-3.0.5
@@ -201,7 +187,7 @@ fi
 - fix scriptlet error (need to own more directories)
 - update description text
 
-* Fri Mar 16 2007 Daniel Veillard <veillard@redhat.com> - 0.2.1-1.fc7
+* Fri Mar 16 2007 Daniel Veillard <veillard@redhat.com> - 0.2.1-1
 - Release of 0.2.1
 - lot of bug and portability fixes
 - Add support for network autostart and init scripts
