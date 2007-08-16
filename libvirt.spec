@@ -35,6 +35,8 @@ Summary: Libraries, includes, etc. to compile with the libvirt library
 Group: Development/Libraries
 Requires: libvirt = %{version}
 Requires: pkgconfig
+Requires: xen-devel
+Requires: gnutls-devel
 Obsoletes: libvir-devel
 
 %description devel
