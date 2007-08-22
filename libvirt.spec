@@ -2,8 +2,8 @@
 
 Summary: Library providing a simple API virtualization
 Name: libvirt
-Version: 0.3.1
-Release: 2%{?dist}%{?extra_release}
+Version: 0.3.2
+Release: 1%{?dist}%{?extra_release}
 License: LGPL
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
@@ -24,7 +24,6 @@ BuildRequires: gettext
 BuildRequires: gnutls-devel
 Obsoletes: libvir
 ExclusiveArch: i386 x86_64 ia64
-Patch0: libvirt-qemu.patch
 
 %description
 Libvirt is a C toolkit to interract with the virtualization capabilities
@@ -57,7 +56,6 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
-%patch0 -p1
 
 %build
 %configure --with-init-script=redhat --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid --with-remote-file=%{_localstatedir}/run/libvirtd.pid
@@ -138,8 +136,8 @@ fi
 %dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/qemu/
 %attr(4755, root, root) %{_libexecdir}/libvirt_proxy
 %attr(0755, root, root) %{_sbindir}/libvirtd
-%doc docs/libvirt.rng
-%doc docs/network.rng
+%doc docs/*.rng
+%doc docs/*.xml
 
 %files devel
 %defattr(-, root, root)
@@ -169,6 +167,13 @@ fi
 %doc docs/examples/python
 
 %changelog
+* Tue Aug 21 2007 Daniel Veillard <veillard@redhat.com> - 0.3.2-1.fc7
+- Release of 0.3.2
+- API for domains migration
+- APIs for collecting statistics on disks and interfaces
+- lots of assorted bugfixes and cleanups
+- documentation and localization improvements
+
 * Thu Jul 26 2007 Daniel Veillard <veillard@redhat.com> - 0.3.1-2.fc7
 - adds fix for bug #249594
 
