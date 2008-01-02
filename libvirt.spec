@@ -11,10 +11,11 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.4.0
-Release: 1%{?dist}%{?extra_release}
+Release: 2%{?dist}%{?extra_release}
 License: LGPL
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
+Patch1: libvirt-%{version}-conffile-size.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 URL: http://libvirt.org/
 BuildRequires: python python-devel
@@ -84,6 +85,7 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+%patch1 -p1
 
 %build
 %configure --with-init-script=redhat --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid --with-remote-file=%{_localstatedir}/run/libvirtd.pid
@@ -203,6 +205,9 @@ fi
 %doc docs/examples/python
 
 %changelog
+* Wed Jan  2 2008 Daniel P. Berrange <berrange@redhat.com> - 0.4.0-2.fc7
+- Fix reading large config files (rhbz #426425)
+
 * Tue Dec 18 2007 Daniel Veillard <veillard@redhat.com> - 0.4.0-1.fc7
 - Release of 0.4.0
 - SASL based authentication
