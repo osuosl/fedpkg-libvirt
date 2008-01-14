@@ -15,7 +15,9 @@ Release: 2%{?dist}%{?extra_release}
 License: LGPL
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
-Patch1: libvirt-%{version}-conffile-size.patch
+Patch1: libvirt-%{version}-auth-null-cb.patch
+Patch2: libvirt-%{version}-conffile-size.patch
+Patch3: libvirt-%{version}-auth-null-cb-2.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 URL: http://libvirt.org/
 BuildRequires: python python-devel
@@ -86,6 +88,8 @@ of recent versions of Linux (and other OSes).
 %prep
 %setup -q
 %patch1 -p1
+%patch2 -p1
+%patch3 -p1
 
 %build
 %configure --with-init-script=redhat --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid --with-remote-file=%{_localstatedir}/run/libvirtd.pid
@@ -205,6 +209,9 @@ fi
 %doc docs/examples/python
 
 %changelog
+* Sun Jan 13 2008 Daniel P. Berrange <berrange@redhat.com> - 0.4.0-3.fc7
+- Fix crash when no auth callback
+
 * Wed Jan  2 2008 Daniel P. Berrange <berrange@redhat.com> - 0.4.0-2.fc7
 - Fix reading large config files (rhbz #426425)
 
