@@ -1,0 +1,83 @@
+diff -rupN libvirt-0.4.0.orig/src/remote_internal.c libvirt-0.4.0.new/src/remote_internal.c
+--- libvirt-0.4.0.orig/src/remote_internal.c	2008-01-11 10:39:34.000000000 -0500
++++ libvirt-0.4.0.new/src/remote_internal.c	2008-01-11 10:43:12.000000000 -0500
+@@ -3054,8 +3054,12 @@ remoteAuthSASL (virConnectPtr conn, stru
+     if ((remoteAddr = addrToString(&sa, salen)) == NULL)
+         goto cleanup;
+ 
+-    if ((saslcb = remoteAuthMakeCallbacks(auth->credtype, auth->ncredtype)) == NULL)
+-        goto cleanup;
++    if (auth) {
++        if ((saslcb = remoteAuthMakeCallbacks(auth->credtype, auth->ncredtype)) == NULL)
++            goto cleanup;
++    } else {
++        saslcb = NULL;
++    }
+ 
+     /* Setup a handle for being a client */
+     err = sasl_client_new("libvirt",
+@@ -3168,15 +3172,21 @@ remoteAuthSASL (virConnectPtr conn, stru
+             goto cleanup;
+         }
+         /* Run the authentication callback */
+-        if ((*(auth->cb))(cred, ncred, auth->cbdata) < 0) {
++        if (auth && auth->cb) {
++            if ((*(auth->cb))(cred, ncred, auth->cbdata) < 0) {
++                __virRaiseError (in_open ? NULL : conn, NULL, NULL, VIR_FROM_REMOTE,
++                                 VIR_ERR_AUTH_FAILED, VIR_ERR_ERROR, NULL, NULL, NULL, 0, 0,
++                                 "Failed to collect auth credentials");
++                goto cleanup;
++            }
++            remoteAuthFillInteract(cred, interact);
++            goto restart;
++        } else {
+             __virRaiseError (in_open ? NULL : conn, NULL, NULL, VIR_FROM_REMOTE,
+                              VIR_ERR_AUTH_FAILED, VIR_ERR_ERROR, NULL, NULL, NULL, 0, 0,
+-                             "Failed to collect auth credentials");
++                             "No authentication callback available");
+             goto cleanup;
+-            return -1;
+         }
+-        remoteAuthFillInteract(cred, interact);
+-        goto restart;
+     }
+     free(iret.mechlist);
+ 
+@@ -3240,15 +3250,22 @@ remoteAuthSASL (virConnectPtr conn, stru
+                 return -1;
+             }
+             /* Run the authentication callback */
+-            if ((*(auth->cb))(cred, ncred, auth->cbdata) < 0) {
++            if (auth && auth->cb) {
++                if ((*(auth->cb))(cred, ncred, auth->cbdata) < 0) {
++                    __virRaiseError (in_open ? NULL : conn, NULL, NULL, VIR_FROM_REMOTE,
++                                     VIR_ERR_AUTH_FAILED, VIR_ERR_ERROR, NULL, NULL, NULL, 0, 0,
++                                     "Failed to collect auth credentials");
++                    goto cleanup;
++                    return -1;
++                }
++                remoteAuthFillInteract(cred, interact);
++                goto restep;
++            } else {
+                 __virRaiseError (in_open ? NULL : conn, NULL, NULL, VIR_FROM_REMOTE,
+                                  VIR_ERR_AUTH_FAILED, VIR_ERR_ERROR, NULL, NULL, NULL, 0, 0,
+-                                 "Failed to collect auth credentials");
++                                 "No authentication callback available");
+                 goto cleanup;
+-                return -1;
+             }
+-            remoteAuthFillInteract(cred, interact);
+-            goto restep;
+         }
+ 
+         if (serverin) {
+@@ -3319,7 +3336,8 @@ remoteAuthSASL (virConnectPtr conn, stru
+     if (remoteAddr) free(remoteAddr);
+     if (serverin) free(serverin);
+ 
+-    free(saslcb);
++    if (saslcb)
++        free(saslcb);
+     remoteAuthFreeCredentials(cred, ncred);
+     if (ret != 0 && saslconn)
+         sasl_dispose(&saslconn);
