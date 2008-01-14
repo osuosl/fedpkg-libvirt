@@ -11,12 +11,13 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.4.0
-Release: 2%{?dist}%{?extra_release}
+Release: 3%{?dist}%{?extra_release}
 License: LGPL
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
 Patch1: libvirt-%{version}-auth-null-cb.patch
 Patch2: libvirt-%{version}-conffile-size.patch
+Patch3: libvirt-%{version}-auth-null-cb-2.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 URL: http://libvirt.org/
 BuildRequires: python python-devel
@@ -91,6 +92,7 @@ of recent versions of Linux (and other OSes).
 %setup -q
 %patch1 -p1
 %patch2 -p1
+%patch3 -p1
 
 %build
 # Xen is availble only on i386 x86_64 ia64
@@ -216,6 +218,9 @@ fi
 %doc docs/examples/python
 
 %changelog
+* Sun Jan 13 2008 Daniel P. Berrange <berrange@redhat.com> - 0.4.0-3.fc8
+- Fix crash when no auth callback
+
 * Wed Jan  2 2008 Daniel P. Berrange <berrange@redhat.com> - 0.4.0-2.fc8
 - Fix reading large config files (rhbz #426425)
 - Fix crash when connecting to a PolicyKit enabled server with not auth callback (rhbz #427107)
