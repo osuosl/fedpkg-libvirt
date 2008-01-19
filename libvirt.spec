@@ -11,13 +11,14 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.4.0
-Release: 3%{?dist}%{?extra_release}
+Release: 4%{?dist}%{?extra_release}
 License: LGPL
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
 Patch1: libvirt-%{version}-auth-null-cb.patch
 Patch2: libvirt-%{version}-conffile-size.patch
 Patch3: libvirt-%{version}-auth-null-cb-2.patch
+Patch4: libvirt-%{version}-remote-ssh.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 URL: http://libvirt.org/
 BuildRequires: python python-devel
@@ -90,6 +91,7 @@ of recent versions of Linux (and other OSes).
 %patch1 -p1
 %patch2 -p1
 %patch3 -p1
+%patch4 -p1
 
 %build
 %configure --with-init-script=redhat --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid --with-remote-file=%{_localstatedir}/run/libvirtd.pid
@@ -209,6 +211,9 @@ fi
 %doc docs/examples/python
 
 %changelog
+* Fri Jan 18 2008 Daniel P. Berrange <berrange@redhat.com> - 0.4.0-4.fc7
+- Fix SSH tunnelling (rhbz #428743)
+
 * Sun Jan 13 2008 Daniel P. Berrange <berrange@redhat.com> - 0.4.0-3.fc7
 - Fix crash when no auth callback
 
