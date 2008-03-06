@@ -8,17 +8,25 @@
 %define with_proxy yes
 %endif
 
+%if "%{fedora}"
+%ifarch ppc64
+%define with_qemu 0
+%else
+%define with_qemu 1
+%endif
+%else
+%define with_qemu 0
+%endif
+
 Summary: Library providing a simple API virtualization
 Name: libvirt
-Version: 0.4.0
-Release: 4%{?dist}%{?extra_release}
+Version: 0.4.1
+Release: 2%{?dist}%{?extra_release}
 License: LGPL
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
-Patch1: libvirt-%{version}-auth-null-cb.patch
-Patch2: libvirt-%{version}-conffile-size.patch
-Patch3: libvirt-%{version}-auth-null-cb-2.patch
-Patch4: libvirt-%{version}-remote-ssh.patch
+Patch0: libvirt-0.4.1-qemud1.patch
+Patch1: libvirt-0.4.1-qemud2.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 URL: http://libvirt.org/
 BuildRequires: python python-devel
@@ -33,12 +41,29 @@ Requires: iptables
 Requires: nc
 Requires: cyrus-sasl
 # Not technically required, but makes 'out-of-box' config
-# work correctly & doesn't have onerous dependancies
+# work correctly & doesn't have onerous dependencies
 Requires: cyrus-sasl-md5
 %if %{with_polkit}
 Requires: PolicyKit >= 0.6
 %endif
-
+# For mount/umount in FS driver
+BuildRequires: util-linux
+# PPC64 has no Xen nor QEmu, try to build anyway
+%ifnarch ppc64
+%if %{with_qemu}
+# From QEMU RPMs
+Requires: /usr/bin/qemu-img
+%else
+# From Xen RPMs
+Requires: /usr/sbin/qcow-create
+%endif
+%endif
+# For LVM drivers
+Requires: lvm2
+# For ISCSI driver
+Requires: iscsi-initiator-utils
+# For disk driver
+Requires: parted
 %ifarch i386 x86_64 ia64
 BuildRequires: xen-devel
 %endif
@@ -48,19 +73,41 @@ BuildRequires: ncurses-devel
 BuildRequires: gettext
 BuildRequires: gnutls-devel
 BuildRequires: avahi-devel
+BuildRequires: libselinux-devel
 BuildRequires: dnsmasq
 BuildRequires: bridge-utils
+%if %{with_qemu}
+BuildRequires: qemu
+%endif
 BuildRequires: cyrus-sasl-devel
 %if %{with_polkit}
 BuildRequires: PolicyKit-devel >= 0.6
 %endif
+# For mount/umount in FS driver
+BuildRequires: util-linux
+# PPC64 has no Xen nor QEmu, try to build anyway
+%ifnarch ppc64
+%if %{with_qemu}
+# From QEMU RPMs
+BuildRequires: /usr/bin/qemu-img
+%else
+# From Xen RPMs
+BuildRequires: /usr/sbin/qcow-create
+%endif
+%endif
+# For LVM drivers
+BuildRequires: lvm2
+# For ISCSI driver
+BuildRequires: iscsi-initiator-utils
+# For disk driver
+BuildRequires: parted-devel
 Obsoletes: libvir
 
 # Fedora build root suckage
 BuildRequires: gawk
 
 %description
-Libvirt is a C toolkit to interract with the virtualization capabilities
+Libvirt is a C toolkit to interact with the virtualization capabilities
 of recent versions of Linux (and other OSes).
 
 %package devel
@@ -86,22 +133,34 @@ Obsoletes: libvir-python
 %description python
 The libvirt-python package contains a module that permits applications
 written in the Python programming language to use the interface
-supplied by the libvirt library to use the the virtualization capabilities 
+supplied by the libvirt library to use the virtualization capabilities
 of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+%patch0 -p1
 %patch1 -p1
-%patch2 -p1
-%patch3 -p1
-%patch4 -p1
 
 %build
-# Xen is availble only on i386 x86_64 ia64
+# Xen is available only on i386 x86_64 ia64
 %ifarch i386 i686 x86_64 ia64
-%configure --with-init-script=redhat --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid --with-remote-file=%{_localstatedir}/run/libvirtd.pid
+%configure --with-init-script=redhat \
+           --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid \
+           --with-remote-file=%{_localstatedir}/run/libvirtd.pid \
+           --with-xen-proxy=%{with_proxy}
 %else
-%configure --without-xen --with-init-script=redhat --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid --with-remote-file=%{_localstatedir}/run/libvirtd.pid
+%ifnarch ppc64
+%configure --without-xen \
+           --with-init-script=redhat \
+           --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid \
+           --with-remote-file=%{_localstatedir}/run/libvirtd.pid
+%else
+%configure --without-xen \
+           --without-qemu \
+           --with-init-script=redhat \
+           --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid \
+           --with-remote-file=%{_localstatedir}/run/libvirtd.pid
+%endif
 %endif
 
 make
@@ -188,6 +247,7 @@ fi
 %if %{with_proxy} == "yes"
 %attr(4755, root, root) %{_libexecdir}/libvirt_proxy
 %endif
+%attr(0755, root, root) %{_libexecdir}/libvirt_parthelper
 %attr(0755, root, root) %{_sbindir}/libvirtd
 %doc docs/*.rng
 %doc docs/*.xml
@@ -220,6 +280,13 @@ fi
 %doc docs/examples/python
 
 %changelog
+* Thu Mar  6 2008 Daniel Veillard <veillard@redhat.com> - 0.4.1-1.fc8
+- Update to 0.4.1
+- Storage APIs
+- xenner support
+- lots of assorted improvements, bugfixes and cleanups
+- documentation and localization improvements
+
 * Thu Jan 17 2008 Daniel P. Berrange <berrange@redhat.com> - 0.4.0-4.fc8
 - Fix SSH tunnelling (rhbz #428743)
 
