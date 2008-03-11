@@ -27,6 +27,7 @@ Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
 Patch0: libvirt-0.4.1-qemud1.patch
 Patch1: libvirt-0.4.1-qemud2.patch
+Patch2: libvirt-0.4.1-daemon-startup.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 URL: http://libvirt.org/
 BuildRequires: python python-devel
@@ -140,6 +141,7 @@ of recent versions of Linux (and other OSes).
 %setup -q
 %patch0 -p1
 %patch1 -p1
+%patch2 -p1
 
 %build
 # Xen is available only on i386 x86_64 ia64
@@ -280,6 +282,9 @@ fi
 %doc docs/examples/python
 
 %changelog
+* Tue Mar 11 2008 Daniel Veillard <veillard@redhat.com> - 0.4.1-2.fc8
+- Fixed daemon startup when run with --daemon flag
+
 * Thu Mar  6 2008 Daniel Veillard <veillard@redhat.com> - 0.4.1-1.fc8
 - Update to 0.4.1
 - Storage APIs
