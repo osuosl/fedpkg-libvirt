@@ -1,0 +1,400 @@
+diff -rup libvirt-0.4.1.orig/configure.in libvirt-0.4.1.new/configure.in
+--- libvirt-0.4.1.orig/configure.in	2008-03-03 09:14:19.000000000 -0500
++++ libvirt-0.4.1.new/configure.in	2008-04-03 15:37:49.000000000 -0400
+@@ -450,10 +450,6 @@ if test "x$with_polkit" = "xyes" -o "x$w
+     CFLAGS="$old_CFLAGS"
+     LDFLAGS="$old_LDFLAGS"
+ 
+-    AC_PATH_PROG(POLKIT_GRANT, polkit-grant)
+-    if test "x$POLKIT_GRANT" != "x"; then
+-      AC_DEFINE_UNQUOTED([POLKIT_GRANT],["$POLKIT_GRANT"],[Location of polkit-grant program])
+-    fi
+     AC_PATH_PROG(POLKIT_AUTH, polkit-auth)
+     if test "x$POLKIT_AUTH" != "x"; then
+       AC_DEFINE_UNQUOTED([POLKIT_AUTH],["$POLKIT_AUTH"],[Location of polkit-auth program])
+diff -rup libvirt-0.4.1.orig/qemud/internal.h libvirt-0.4.1.new/qemud/internal.h
+--- libvirt-0.4.1.orig/qemud/internal.h	2008-01-24 12:07:43.000000000 -0500
++++ libvirt-0.4.1.new/qemud/internal.h	2008-04-03 15:38:03.000000000 -0400
+@@ -179,6 +179,9 @@ void qemudLog(int priority, const char *
+ void remoteDispatchClientRequest (struct qemud_server *server,
+                                   struct qemud_client *client);
+ 
++#if HAVE_POLKIT
++int qemudGetSocketIdentity(int fd, uid_t *uid, pid_t *pid);
++#endif
+ 
+ #endif
+ 
+diff -rup libvirt-0.4.1.orig/qemud/qemud.c libvirt-0.4.1.new/qemud/qemud.c
+--- libvirt-0.4.1.orig/qemud/qemud.c	2008-04-03 15:39:15.000000000 -0400
++++ libvirt-0.4.1.new/qemud/qemud.c	2008-04-03 15:38:03.000000000 -0400
+@@ -1040,6 +1040,28 @@ remoteCheckAccess (struct qemud_client *
+     return 0;
+ }
+ 
++#if HAVE_POLKIT
++int qemudGetSocketIdentity(int fd, uid_t *uid, pid_t *pid) {
++#ifdef SO_PEERCRED
++    struct ucred cr;
++    unsigned int cr_len = sizeof (cr);
++
++    if (getsockopt (fd, SOL_SOCKET, SO_PEERCRED, &cr, &cr_len) < 0) {
++        qemudLog(QEMUD_ERR, _("Failed to verify client credentials: %s"),
++                 strerror(errno));
++        return -1;
++    }
++
++    *pid = cr.pid;
++    *uid = cr.uid;
++#else
++    /* XXX Many more OS support UNIX socket credentials we could port to. See dbus ....*/
++#error "UNIX socket credentials not supported/implemented on this platform yet..."
++#endif
++    return 0;
++}
++#endif
++
+ static int qemudDispatchServer(struct qemud_server *server, struct qemud_socket *sock) {
+     int fd;
+     struct sockaddr_storage addr;
+@@ -1075,6 +1097,26 @@ static int qemudDispatchServer(struct qe
+     memcpy (&client->addr, &addr, sizeof addr);
+     client->addrlen = addrlen;
+ 
++#if HAVE_POLKIT
++    /* Only do policy checks for non-root - allow root user
++       through with no checks, as a fail-safe - root can easily
++       change policykit policy anyway, so its pointless trying
++       to restrict root */
++    if (client->auth == REMOTE_AUTH_POLKIT) {
++        uid_t uid;
++        pid_t pid;
++
++        if (qemudGetSocketIdentity(client->fd, &uid, &pid) < 0)
++            goto cleanup;
++
++        /* Cient is running as root, so disable auth */
++        if (uid == 0) {
++            qemudLog(QEMUD_INFO, _("Turn off polkit auth for privileged client %d"), pid);
++            client->auth = REMOTE_AUTH_NONE;
++        }
++    }
++#endif
++
+     if (client->type != QEMUD_SOCK_TYPE_TLS) {
+         client->mode = QEMUD_MODE_RX_HEADER;
+         client->bufferLength = REMOTE_MESSAGE_HEADER_XDR_LEN;
+diff -rup libvirt-0.4.1.orig/qemud/remote.c libvirt-0.4.1.new/qemud/remote.c
+--- libvirt-0.4.1.orig/qemud/remote.c	2008-02-29 11:23:17.000000000 -0500
++++ libvirt-0.4.1.new/qemud/remote.c	2008-04-03 15:38:03.000000000 -0400
+@@ -2564,27 +2564,6 @@ remoteDispatchAuthSaslStep (struct qemud
+ 
+ 
+ #if HAVE_POLKIT
+-static int qemudGetSocketIdentity(int fd, uid_t *uid, pid_t *pid) {
+-#ifdef SO_PEERCRED
+-    struct ucred cr;
+-    unsigned int cr_len = sizeof (cr);
+-
+-    if (getsockopt (fd, SOL_SOCKET, SO_PEERCRED, &cr, &cr_len) < 0) {
+-        qemudLog(QEMUD_ERR, _("Failed to verify client credentials: %s"),
+-                 strerror(errno));
+-        return -1;
+-    }
+-
+-    *pid = cr.pid;
+-    *uid = cr.uid;
+-#else
+-    /* XXX Many more OS support UNIX socket credentials we could port to. See dbus ....*/
+-#error "UNIX socket credentials not supported/implemented on this platform yet..."
+-#endif
+-    return 0;
+-}
+-
+-
+ static int
+ remoteDispatchAuthPolkit (struct qemud_server *server ATTRIBUTE_UNUSED,
+                           struct qemud_client *client,
+@@ -2594,6 +2573,15 @@ remoteDispatchAuthPolkit (struct qemud_s
+ {
+     pid_t callerPid;
+     uid_t callerUid;
++    PolKitCaller *pkcaller = NULL;
++    PolKitAction *pkaction = NULL;
++    PolKitContext *pkcontext = NULL;
++    PolKitError *pkerr = NULL;
++    PolKitResult pkresult;
++    DBusError err;
++    const char *action = client->readonly ?
++        "org.libvirt.unix.monitor" :
++        "org.libvirt.unix.manage";
+ 
+     REMOTE_DEBUG("Start PolicyKit auth %d", client->fd);
+     if (client->auth != REMOTE_AUTH_POLKIT) {
+@@ -2609,98 +2597,78 @@ remoteDispatchAuthPolkit (struct qemud_s
+         return -2;
+     }
+ 
+-    /* Only do policy checks for non-root - allow root user
+-       through with no checks, as a fail-safe - root can easily
+-       change policykit policy anyway, so its pointless trying
+-       to restrict root */
+-    if (callerUid == 0) {
+-        qemudLog(QEMUD_INFO, _("Allowing PID %d running as root"), callerPid);
+-        ret->complete = 1;
+-        client->auth = REMOTE_AUTH_NONE;
+-    } else {
+-        PolKitCaller *pkcaller = NULL;
+-        PolKitAction *pkaction = NULL;
+-        PolKitContext *pkcontext = NULL;
+-        PolKitError *pkerr = NULL;
+-        PolKitResult pkresult;
+-        DBusError err;
+-        const char *action = client->readonly ?
+-            "org.libvirt.unix.monitor" :
+-            "org.libvirt.unix.manage";
+-
+-        qemudLog(QEMUD_INFO, _("Checking PID %d running as %d"),
+-                 callerPid, callerUid);
+-        dbus_error_init(&err);
+-        if (!(pkcaller = polkit_caller_new_from_pid(server->sysbus,
+-                                                    callerPid, &err))) {
+-            qemudLog(QEMUD_ERR, _("Failed to lookup policy kit caller: %s"),
+-                     err.message);
+-            dbus_error_free(&err);
+-            remoteDispatchFailAuth(client, req);
+-            return -2;
+-        }
+-
+-        if (!(pkaction = polkit_action_new())) {
+-            qemudLog(QEMUD_ERR, _("Failed to create polkit action %s\n"),
+-                                  strerror(errno));
+-            polkit_caller_unref(pkcaller);
+-            remoteDispatchFailAuth(client, req);
+-            return -2;
+-        }
+-        polkit_action_set_action_id(pkaction, action);
+-
+-        if (!(pkcontext = polkit_context_new()) ||
+-            !polkit_context_init(pkcontext, &pkerr)) {
+-            qemudLog(QEMUD_ERR, _("Failed to create polkit context %s\n"),
+-                     (pkerr ? polkit_error_get_error_message(pkerr)
+-                      : strerror(errno)));
+-            if (pkerr)
+-                polkit_error_free(pkerr);
+-            polkit_caller_unref(pkcaller);
+-            polkit_action_unref(pkaction);
+-            dbus_error_free(&err);
+-            remoteDispatchFailAuth(client, req);
+-            return -2;
+-        }
++    qemudLog(QEMUD_INFO, _("Checking PID %d running as %d"),
++             callerPid, callerUid);
++    dbus_error_init(&err);
++    if (!(pkcaller = polkit_caller_new_from_pid(server->sysbus,
++                                                callerPid, &err))) {
++        qemudLog(QEMUD_ERR, _("Failed to lookup policy kit caller: %s"),
++                 err.message);
++        dbus_error_free(&err);
++        remoteDispatchFailAuth(client, req);
++        return -2;
++    }
++
++    if (!(pkaction = polkit_action_new())) {
++        qemudLog(QEMUD_ERR, _("Failed to create polkit action %s\n"),
++                 strerror(errno));
++        polkit_caller_unref(pkcaller);
++        remoteDispatchFailAuth(client, req);
++        return -2;
++    }
++    polkit_action_set_action_id(pkaction, action);
++
++    if (!(pkcontext = polkit_context_new()) ||
++        !polkit_context_init(pkcontext, &pkerr)) {
++        qemudLog(QEMUD_ERR, _("Failed to create polkit context %s\n"),
++                 (pkerr ? polkit_error_get_error_message(pkerr)
++                  : strerror(errno)));
++        if (pkerr)
++            polkit_error_free(pkerr);
++        polkit_caller_unref(pkcaller);
++        polkit_action_unref(pkaction);
++        dbus_error_free(&err);
++        remoteDispatchFailAuth(client, req);
++        return -2;
++    }
+ 
+ #if HAVE_POLKIT_CONTEXT_IS_CALLER_AUTHORIZED
+-        pkresult = polkit_context_is_caller_authorized(pkcontext,
+-                                                       pkaction,
+-                                                       pkcaller,
+-                                                       0,
+-                                                       &pkerr);
+-        if (pkerr && polkit_error_is_set(pkerr)) {
+-            qemudLog(QEMUD_ERR,
+-                     _("Policy kit failed to check authorization %d %s"),
+-                     polkit_error_get_error_code(pkerr),
+-                     polkit_error_get_error_message(pkerr));
+-            remoteDispatchFailAuth(client, req);
+-            return -2;
+-        }
++    pkresult = polkit_context_is_caller_authorized(pkcontext,
++                                                   pkaction,
++                                                   pkcaller,
++                                                   0,
++                                                   &pkerr);
++    if (pkerr && polkit_error_is_set(pkerr)) {
++        qemudLog(QEMUD_ERR,
++                 _("Policy kit failed to check authorization %d %s"),
++                 polkit_error_get_error_code(pkerr),
++                 polkit_error_get_error_message(pkerr));
++        remoteDispatchFailAuth(client, req);
++        return -2;
++    }
+ #else
+-        pkresult = polkit_context_can_caller_do_action(pkcontext,
+-                                                       pkaction,
+-                                                       pkcaller);
++    pkresult = polkit_context_can_caller_do_action(pkcontext,
++                                                   pkaction,
++                                                   pkcaller);
+ #endif
+-        polkit_context_unref(pkcontext);
+-        polkit_caller_unref(pkcaller);
+-        polkit_action_unref(pkaction);
+-        if (pkresult != POLKIT_RESULT_YES) {
+-            qemudLog(QEMUD_ERR,
+-                     _("Policy kit denied action %s from pid %d, uid %d,"
+-                       " result: %s\n"),
+-                     action, callerPid, callerUid,
+-                     polkit_result_to_string_representation(pkresult));
+-            remoteDispatchFailAuth(client, req);
+-            return -2;
+-        }
+-        qemudLog(QEMUD_INFO,
+-                 _("Policy allowed action %s from pid %d, uid %d, result %s"),
++    polkit_context_unref(pkcontext);
++    polkit_caller_unref(pkcaller);
++    polkit_action_unref(pkaction);
++    if (pkresult != POLKIT_RESULT_YES) {
++        qemudLog(QEMUD_ERR,
++                 _("Policy kit denied action %s from pid %d, uid %d,"
++                   " result: %s\n"),
+                  action, callerPid, callerUid,
+                  polkit_result_to_string_representation(pkresult));
+-        ret->complete = 1;
+-        client->auth = REMOTE_AUTH_NONE;
++        remoteDispatchFailAuth(client, req);
++        return -2;
+     }
++    qemudLog(QEMUD_INFO,
++             _("Policy allowed action %s from pid %d, uid %d, result %s"),
++             action, callerPid, callerUid,
++             polkit_result_to_string_representation(pkresult));
++    ret->complete = 1;
++    client->auth = REMOTE_AUTH_NONE;
+ 
+     return 0;
+ }
+diff -rup libvirt-0.4.1.orig/src/libvirt.c libvirt-0.4.1.new/src/libvirt.c
+--- libvirt-0.4.1.orig/src/libvirt.c	2008-02-26 10:37:43.000000000 -0500
++++ libvirt-0.4.1.new/src/libvirt.c	2008-04-03 15:38:47.000000000 -0400
+@@ -19,6 +19,9 @@
+ #include <sys/stat.h>
+ #include <unistd.h>
+ #include <assert.h>
++#ifdef HAVE_SYS_WAIT_H
++#include <sys/wait.h>
++#endif
+ 
+ #include <libxml/parser.h>
+ #include <libxml/xpath.h>
+@@ -66,6 +69,39 @@ static int initialized = 0;
+ int debugFlag = 0;
+ #endif
+ 
++#if defined(POLKIT_AUTH)
++static int virConnectAuthGainPolkit(const char *privilege) {
++    const char *const args[] = {
++        POLKIT_AUTH, "--obtain", privilege, NULL
++    };
++    int childpid, status, ret;
++
++    /* Root has all rights */
++    if (getuid() == 0)
++        return 0;
++
++    if ((childpid = fork()) < 0)
++        return -1;
++
++    if (!childpid) {
++        execvp(args[0], (char **)args);
++        _exit(-1);
++    }
++
++    while ((ret = waitpid(childpid, &status, 0) == -1) && errno == EINTR);
++    if (ret == -1) {
++        return -1;
++    }
++
++    if (!WIFEXITED(status) ||
++        (WEXITSTATUS(status) != 0 && WEXITSTATUS(status) != 1)) {
++        return -1;
++    }
++
++    return 0;
++}
++#endif
++
+ static int virConnectAuthCallbackDefault(virConnectCredentialPtr cred,
+                                          unsigned int ncred,
+                                          void *cbdata ATTRIBUTE_UNUSED) {
+@@ -77,28 +113,25 @@ static int virConnectAuthCallbackDefault
+         size_t len;
+ 
+         switch (cred[i].type) {
+-#if defined(POLKIT_GRANT) || defined(POLKIT_AUTH)
+         case VIR_CRED_EXTERNAL: {
+             int ret;
+-            const char *const args[] = {
+-#if defined(POLKIT_GRANT)
+-                POLKIT_GRANT, "--gain", cred[i].prompt, NULL
+-#else
+-                POLKIT_AUTH, "--obtain", cred[i].prompt, NULL
+-#endif
+-            };
+-
+             if (STRNEQ(cred[i].challenge, "PolicyKit"))
+                 return -1;
+-            if (virRun(NULL, (char **) args, &ret) < 0)
+-                return -1;
+ 
+-            if (!WIFEXITED(ret) ||
+-                (WEXITSTATUS(ret) != 0 && WEXITSTATUS(ret) != 1))
++#if defined(POLKIT_AUTH)
++            if (virConnectAuthGainPolkit(cred[i].prompt) < 0)
+                 return -1;
++#else
++            /*
++             * Ignore & carry on. Although we can't auth
++             * directly, the user may have authenticated
++             * themselves already outside context of libvirt
++             */
++#endif
++
+             break;
+         }
+-#endif
++
+         case VIR_CRED_USERNAME:
+         case VIR_CRED_AUTHNAME:
+         case VIR_CRED_ECHOPROMPT:
+@@ -158,9 +191,7 @@ static int virConnectCredTypeDefault[] =
+     VIR_CRED_REALM,
+     VIR_CRED_PASSPHRASE,
+     VIR_CRED_NOECHOPROMPT,
+-#if defined(POLKIT_AUTH) || defined(POLKIT_GRANT)
+     VIR_CRED_EXTERNAL,
+-#endif
+ };
+ 
+ static virConnectAuth virConnectAuthDefault = {

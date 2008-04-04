@@ -1,0 +1,63 @@
+diff -rupN libvirt-0.4.1.orig/src/bridge.c libvirt-0.4.1.new/src/bridge.c
+--- libvirt-0.4.1.orig/src/bridge.c	2008-02-28 06:16:21.000000000 -0500
++++ libvirt-0.4.1.new/src/bridge.c	2008-03-13 11:25:12.000000000 -0400
+@@ -313,7 +313,6 @@ brDeleteInterface(brControl *ctl ATTRIBU
+ int
+ brAddTap(brControl *ctl,
+          const char *bridge,
+-         unsigned char *macaddr,
+          char *ifname,
+          int maxlen,
+          int *tapfd)
+@@ -357,18 +356,6 @@ brAddTap(brControl *ctl,
+         }
+ 
+         if (ioctl(fd, TUNSETIFF, &try) == 0) {
+-            struct ifreq addr;
+-            memset(&addr, 0, sizeof(addr));
+-            memcpy(addr.ifr_hwaddr.sa_data, macaddr, 6);
+-            addr.ifr_hwaddr.sa_family = ARPHRD_ETHER;
+-
+-            /* Device actually starts in 'UP' state, but it
+-             * needs to be down to set the MAC addr
+-             */
+-            if ((errno = brSetInterfaceUp(ctl, try.ifr_name, 0)))
+-                goto error;
+-            if (ioctl(fd, SIOCSIFHWADDR, &addr) != 0)
+-                goto error;
+             if ((errno = brAddInterface(ctl, bridge, try.ifr_name)))
+                 goto error;
+             if ((errno = brSetInterfaceUp(ctl, try.ifr_name, 1)))
+diff -rupN libvirt-0.4.1.orig/src/bridge.h libvirt-0.4.1.new/src/bridge.h
+--- libvirt-0.4.1.orig/src/bridge.h	2008-02-28 06:16:21.000000000 -0500
++++ libvirt-0.4.1.new/src/bridge.h	2008-03-13 11:25:12.000000000 -0400
+@@ -62,7 +62,6 @@ int     brDeleteInterface       (brContr
+ 
+ int     brAddTap                (brControl *ctl,
+                                  const char *bridge,
+-                                 unsigned char *mac,
+                                  char *ifname,
+                                  int maxlen,
+                                  int *tapfd);
+diff -rupN libvirt-0.4.1.orig/src/qemu_conf.c libvirt-0.4.1.new/src/qemu_conf.c
+--- libvirt-0.4.1.orig/src/qemu_conf.c	2008-03-13 11:24:39.000000000 -0400
++++ libvirt-0.4.1.new/src/qemu_conf.c	2008-03-13 11:25:12.000000000 -0400
+@@ -1540,7 +1540,6 @@ qemudNetworkIfaceConnect(virConnectPtr c
+     }
+ 
+     if ((err = brAddTap(driver->brctl, brname,
+-                        net->mac,
+                         ifname, BR_IFNAME_MAXLEN, &tapfd))) {
+         qemudReportError(conn, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
+                          "Failed to add tap interface '%s' to bridge '%s' : %s",
+@@ -1548,7 +1547,9 @@ qemudNetworkIfaceConnect(virConnectPtr c
+         goto error;
+     }
+ 
+-    snprintf(tapfdstr, sizeof(tapfdstr), "tap,fd=%d,script=,vlan=%d", tapfd, vlan);
++    snprintf(tapfdstr, sizeof(tapfdstr),
++             "tap,fd=%d,script=,vlan=%d,ifname=%s",
++             tapfd, vlan, ifname);
+ 
+     if (!(retval = strdup(tapfdstr)))
+         goto no_memory;

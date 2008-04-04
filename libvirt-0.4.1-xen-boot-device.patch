@@ -1,0 +1,21 @@
+commit 2bcf35336cd649e58c08d7cf3452a8d4353bcf85
+Author: Daniel Veillard <veillard@redhat.com>
+Date:   Fri Mar 7 09:23:30 2008 +0000
+
+    * src/xend_internal.c: applied patch from Cole Robinson to not
+      loose the boot tag when defining a fully virtualized xen domain
+    Daniel
+
+diff --git a/src/xend_internal.c b/src/xend_internal.c
+index 8bbc28f..fef54f8 100644
+--- a/src/xend_internal.c
++++ b/src/xend_internal.c
+@@ -1323,7 +1323,7 @@ xend_parse_sexp_desc_os(virConnectPtr xend, struct sexpr *node, virBufferPtr buf
+     if (hvm)
+         virBufferVSprintf(buf, "    <loader>%s</loader>\n", loader);
+ 
+-    if (kernel) {
++    if ((kernel) && ((!loader) || (STRNEQ(kernel, loader)))) {
+         virBufferVSprintf(buf, "    <kernel>%s</kernel>\n", kernel);
+         if (initrd && initrd[0])
+             virBufferVSprintf(buf, "    <initrd>%s</initrd>\n", initrd);
