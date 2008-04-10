@@ -20,21 +20,11 @@
 
 Summary: Library providing a simple API virtualization
 Name: libvirt
-Version: 0.4.1
-Release: 3%{?dist}%{?extra_release}
+Version: 0.4.2
+Release: 1%{?dist}%{?extra_release}
 License: LGPL
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
-Patch0: libvirt-0.4.1-qemud1.patch
-Patch1: libvirt-0.4.1-qemud2.patch
-Patch2: %{name}-%{version}-daemon-startup.patch
-Patch3: %{name}-%{version}-qemu-media-change.patch
-Patch4: %{name}-%{version}-xen-boot-device.patch
-Patch5: %{name}-%{version}-tap-ifname.patch
-Patch6: libvirt-storage-api-iscsi-sendtarget.patch 
-Patch7: libvirt-iscsi-sysfs4.patch 
-Patch8: libvirt-source-dir-fix.patch
-Patch9: %{name}-%{version}-polkit.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 URL: http://libvirt.org/
 BuildRequires: python python-devel
@@ -146,16 +136,6 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
-%patch0 -p1
-%patch1 -p1
-%patch2 -p1
-%patch3 -p1
-%patch4 -p1
-%patch5 -p1
-%patch6 -p1
-%patch7 -p1
-%patch8 -p1
-%patch9 -p1
 
 %build
 # Xen is available only on i386 x86_64 ia64
@@ -192,6 +172,8 @@ rm -f $RPM_BUILD_ROOT%{_libdir}/*.a
 rm -f $RPM_BUILD_ROOT%{_libdir}/python*/site-packages/*.la
 rm -f $RPM_BUILD_ROOT%{_libdir}/python*/site-packages/*.a
 install -d -m 0755 $RPM_BUILD_ROOT%{_localstatedir}/run/libvirt/
+# Default dir for disk images defined in SELinux policy
+install -d -m 0755 $RPM_BUILD_ROOT%{_localstatedir}/lib/libvirt/images/
 
 # We don't want to install /etc/libvirt/qemu/networks in the main %files list
 # because if the admin wants to delete the default network completely, we don't
@@ -256,6 +238,7 @@ fi
 %{_datadir}/libvirt/networks/default.xml
 %dir %{_localstatedir}/run/libvirt/
 %dir %{_localstatedir}/lib/libvirt/
+%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/images/
 %if %{with_polkit}
 %{_datadir}/PolicyKit/policy/libvirtd.policy
 %endif
@@ -296,6 +279,11 @@ fi
 %doc docs/examples/python
 
 %changelog
+* Tue Apr  8 2008 Daniel Veillard ,veillard@redhat.com> 0.4.2-1.fc8
+- upstream release 0.4.2
+- many bug fixes
+- localization updates
+
 * Thu Apr  4 2008 Daniel P. Berrange <berrange@redhat.com> - 0.4.1-3.fc8
 - Don't run polkit-auth as root
 - Don't request polkit auth if client is root
