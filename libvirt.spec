@@ -2,9 +2,11 @@
 
 %if "%{fedora}" >= "8"
 %define with_polkit 1
+%define with_lokkit 1
 %define with_proxy no
 %else
 %define with_polkit 0
+%define with_lokkit 0
 %define with_proxy yes
 %endif
 
@@ -21,7 +23,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.4.2
-Release: 1%{?dist}%{?extra_release}
+Release: 2%{?dist}%{?extra_release}
 License: LGPL
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
@@ -43,6 +45,9 @@ Requires: cyrus-sasl
 Requires: cyrus-sasl-md5
 %if %{with_polkit}
 Requires: PolicyKit >= 0.6
+%endif
+%if %{with_lokkit}
+Requires: /usr/sbin/lokkit
 %endif
 # For mount/umount in FS driver
 BuildRequires: util-linux
@@ -80,6 +85,9 @@ BuildRequires: qemu
 BuildRequires: cyrus-sasl-devel
 %if %{with_polkit}
 BuildRequires: PolicyKit-devel >= 0.6
+%endif
+%if %{with_lokkit}
+BuildRequires: /usr/sbin/lokkit
 %endif
 # For mount/umount in FS driver
 BuildRequires: util-linux
@@ -279,7 +287,10 @@ fi
 %doc docs/examples/python
 
 %changelog
-* Tue Apr  8 2008 Daniel Veillard ,veillard@redhat.com> 0.4.2-1.fc9
+* Mon Apr 28 2008 Mark McLoughlin <markmc@redhat.com> - 0.4.2-2.fc9
+- Enable lokkit support (#443796)
+
+* Tue Apr  8 2008 Daniel Veillard <veillard@redhat.com> - 0.4.2-1.fc9
 - upstream release 0.4.2
 - many bug fixes
 - localization updates
