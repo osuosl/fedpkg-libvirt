@@ -1,6 +1,6 @@
 # -*- rpm-spec -*-
 
-%if "%{fedora}" >= "8"
+%if 0%{fedora} >= 8
 %define with_polkit 1
 %define with_proxy no
 %else
@@ -284,6 +284,7 @@ fi
 %changelog
 * Wed Jun  4 2008 Mark McLoughlin <markmc@redhat.com> - 0.4.2-4.fc9
 - Disable lokkit support again (#449996, #447633)
+- Ensure PolicyKit is enabled (#446616)
 
 * Fri May  9 2008 Daniel P. Berrange <berrange@redhat.com> - 0.4.2-3.fc9
 - Added directory for initrd/kernel images for SELinux policy
