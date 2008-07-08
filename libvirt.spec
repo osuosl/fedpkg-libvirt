@@ -25,6 +25,7 @@ Release: 1%{?dist}%{?extra_release}
 License: LGPL
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
+Patch1: %{name}-%{version}-boot-cdrom.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
 URL: http://libvirt.org/
 BuildRequires: python python-devel
@@ -136,6 +137,7 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+%patch1 -p1
 
 %build
 # Xen is available only on i386 x86_64 ia64
@@ -279,6 +281,9 @@ fi
 %doc docs/examples/python
 
 %changelog
+* Tue Jul  8 2008 Daniel P. Berrange <berrange@redhat.com> - 0.4.4-2.fc8
+- Fix booting of CDROM images with KVM (rhbz #452355)
+
 * Thu Jun 25 2008 Daniel Veillard <veillard@redhat.com> - 0.4.4-1.fc8
 - upstream release 0.4.4
 - fixes a couple of bugs in previous release
