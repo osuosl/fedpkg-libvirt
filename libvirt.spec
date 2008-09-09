@@ -30,10 +30,11 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.4.5
-Release: 1%{?dist}%{?extra_release}
+Release: 2%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
+Patch0: libvirt-0.4.5-no-emulator-segfault.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python python-devel
@@ -147,6 +148,7 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+%patch0 -p1
 
 %build
 %if ! %{with_xen}
@@ -302,7 +304,10 @@ fi
 %doc docs/examples/python
 
 %changelog
-* Mon Sep  8 2008 Daniel Veillard <veillard@redhat.com> - 0.4.5-1.fc10
+* Tue Sep  9 2008 Daniel Veillard <veillard@redhat.com> - 0.4.5-2.fc9
+- fix a crash if a QEmu/KVM domain is defined without an emulator path
+
+* Mon Sep  8 2008 Daniel Veillard <veillard@redhat.com> - 0.4.5-1.fc9
 - upstream release 0.4.5
 - a lot of bug fixes
 - major updates to QEmu/KVM and Linux containers drivers
