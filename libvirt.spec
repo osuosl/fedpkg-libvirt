@@ -30,10 +30,11 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.4.6
-Release: 1%{?dist}%{?extra_release}
+Release: 2%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
+Patch0: python_make.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python python-devel
@@ -147,6 +148,7 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+%patch0 -p0
 
 %build
 %if ! %{with_xen}
@@ -302,6 +304,9 @@ fi
 %doc docs/examples/python
 
 %changelog
+* Wed Sep 24 2008 Daniel Veillard <veillard@redhat.com> - 0.4.6-2.fc9
+- a subtle bug in python submakefile broke the 0.4.6-1.fc9 build #463733
+
 * Wed Sep 24 2008 Daniel Veillard <veillard@redhat.com> - 0.4.6-1.fc9
 - upstream release 0.4.6
 - fixes a couple of serious bugs in the previous release
