@@ -1,32 +1,41 @@
 # -*- rpm-spec -*-
 
-%if "%{fedora}" >= "8"
-%define with_polkit 1
-%define with_proxy no
-%else
-%define with_polkit 0
-%define with_proxy yes
+%define with_xen       1
+%define with_xen_proxy 1
+%define with_qemu      1
+%define with_openvz    1
+%define with_lxc       1
+%define with_polkit    0
+
+# Xen is available only on i386 x86_64 ia64
+%ifnarch i386 i686 x86_64 ia64
+%define with_xen 0
+%endif
+
+%if ! %{with_xen}
+%define with_xen_proxy 0
 %endif
 
 %if "%{fedora}"
 %ifarch ppc64
 %define with_qemu 0
-%else
-%define with_qemu 1
 %endif
-%else
-%define with_qemu 0
+%endif
+
+%if 0%{fedora} >= 8
+%define with_polkit    1
+%define with_xen_proxy 0
 %endif
 
 Summary: Library providing a simple API virtualization
 Name: libvirt
-Version: 0.4.4
-Release: 2%{?dist}%{?extra_release}
-License: LGPL
+Version: 0.4.6
+Release: 1%{?dist}%{?extra_release}
+License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
-Patch1: %{name}-%{version}-boot-cdrom.patch
-BuildRoot: %{_tmppath}/%{name}-%{version}-root
+Patch0: python_make.patch
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python python-devel
 Requires: libxml2
@@ -47,12 +56,14 @@ Requires: PolicyKit >= 0.6
 %endif
 # For mount/umount in FS driver
 BuildRequires: util-linux
-# PPC64 has no Xen nor QEmu, try to build anyway
-%ifnarch ppc64
+# For showmount in FS driver (netfs discovery)
+BuildRequires: nfs-utils
+Requires: nfs-utils
 %if %{with_qemu}
 # From QEMU RPMs
 Requires: /usr/bin/qemu-img
 %else
+%if %{with_xen}
 # From Xen RPMs
 Requires: /usr/sbin/qcow-create
 %endif
@@ -63,10 +74,11 @@ Requires: lvm2
 Requires: iscsi-initiator-utils
 # For disk driver
 Requires: parted
-%ifarch i386 x86_64 ia64
+%if %{with_xen}
 BuildRequires: xen-devel
 %endif
 BuildRequires: libxml2-devel
+BuildRequires: xhtml1-dtds
 BuildRequires: readline-devel
 BuildRequires: ncurses-devel
 BuildRequires: gettext
@@ -84,12 +96,11 @@ BuildRequires: PolicyKit-devel >= 0.6
 %endif
 # For mount/umount in FS driver
 BuildRequires: util-linux
-# PPC64 has no Xen nor QEmu, try to build anyway
-%ifnarch ppc64
 %if %{with_qemu}
 # From QEMU RPMs
 BuildRequires: /usr/bin/qemu-img
 %else
+%if %{with_xen}
 # From Xen RPMs
 BuildRequires: /usr/sbin/qcow-create
 %endif
@@ -114,7 +125,7 @@ Summary: Libraries, includes, etc. to compile with the libvirt library
 Group: Development/Libraries
 Requires: libvirt = %{version}
 Requires: pkgconfig
-%ifarch i386 x86_64 ia64
+%if %{with_xen}
 Requires: xen-devel
 %endif
 Obsoletes: libvir-devel
@@ -137,31 +148,33 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
-%patch1 -p1
+%patch0 -p0
 
 %build
-# Xen is available only on i386 x86_64 ia64
-%ifarch i386 i686 x86_64 ia64
-%configure --with-init-script=redhat \
-           --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid \
-           --with-remote-file=%{_localstatedir}/run/libvirtd.pid \
-           --with-xen-proxy=%{with_proxy}
-%else
-%ifnarch ppc64
-%configure --without-xen \
-           --with-init-script=redhat \
-           --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid \
-           --with-remote-file=%{_localstatedir}/run/libvirtd.pid
-%else
-%configure --without-xen \
-           --without-qemu \
-           --with-init-script=redhat \
-           --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid \
-           --with-remote-file=%{_localstatedir}/run/libvirtd.pid
-%endif
+%if ! %{with_xen}
+%define _without_xen --without-xen
 %endif
 
-make
+%if ! %{with_qemu}
+%define _without_qemu --without-qemu
+%endif
+
+%if ! %{with_openvz}
+%define _without_openvz --without-openvz
+%endif
+
+%if ! %{with_lxc}
+%define _without_lxc --without-lxc
+%endif
+
+%configure %{?_without_xen} \
+           %{?_without_qemu} \
+           %{?_without_openvz} \
+           %{?_without_lxc} \
+           --with-init-script=redhat \
+           --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid \
+           --with-remote-file=%{_localstatedir}/run/libvirtd.pid
+make %{?_smp_mflags}
 
 %install
 rm -fr %{buildroot}
@@ -176,6 +189,8 @@ rm -f $RPM_BUILD_ROOT%{_libdir}/python*/site-packages/*.a
 install -d -m 0755 $RPM_BUILD_ROOT%{_localstatedir}/run/libvirt/
 # Default dir for disk images defined in SELinux policy
 install -d -m 0755 $RPM_BUILD_ROOT%{_localstatedir}/lib/libvirt/images/
+# Default dir for kernel+initrd images defnied in SELinux policy
+install -d -m 0755 $RPM_BUILD_ROOT%{_localstatedir}/lib/libvirt/boot/
 
 # We don't want to install /etc/libvirt/qemu/networks in the main %files list
 # because if the admin wants to delete the default network completely, we don't
@@ -241,14 +256,22 @@ fi
 %dir %{_localstatedir}/run/libvirt/
 %dir %{_localstatedir}/lib/libvirt/
 %dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/images/
+%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/boot/
+%{_datadir}/augeas/lenses/libvirtd.aug
+%{_datadir}/augeas/lenses/libvirtd_qemu.aug
+%{_datadir}/augeas/lenses/tests/test_libvirtd.aug
+%{_datadir}/augeas/lenses/tests/test_libvirtd_qemu.aug
 %if %{with_polkit}
-%{_datadir}/PolicyKit/policy/libvirtd.policy
+%{_datadir}/PolicyKit/policy/org.libvirt.unix.policy
 %endif
 %dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/qemu/
-%if %{with_proxy} == "yes"
+%if %{with_xen_proxy}
 %attr(4755, root, root) %{_libexecdir}/libvirt_proxy
 %endif
 %attr(0755, root, root) %{_libexecdir}/libvirt_parthelper
+%if %{with_lxc}
+%attr(0755, root, root) %{_libexecdir}/libvirt_lxc
+%endif
 %attr(0755, root, root) %{_sbindir}/libvirtd
 %doc docs/*.rng
 %doc docs/*.xml
@@ -281,6 +304,9 @@ fi
 %doc docs/examples/python
 
 %changelog
+* Tue Sep 30 2008 Daniel Veillard <veillard@redhat.com> - 0.4.6-1.f8
+- update to latest upstream release
+
 * Tue Jul  8 2008 Daniel P. Berrange <berrange@redhat.com> - 0.4.4-2.fc8
 - Fix booting of CDROM images with KVM (rhbz #452355)
 
