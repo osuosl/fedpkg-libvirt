@@ -10,6 +10,7 @@
 %define with_polkit    0%{!?_without_polkit:0}
 %define with_python    0%{!?_without_python:1}
 %define with_libvirtd  0%{!?_without_libvirtd:1}
+%define with_uml       0%{!?_without_uml:1}
 
 # Xen is available only on i386 x86_64 ia64
 %ifnarch i386 i686 x86_64 ia64
@@ -33,12 +34,11 @@
 
 Summary: Library providing a simple API virtualization
 Name: libvirt
-Version: 0.4.6
-Release: 3%{?dist}%{?extra_release}
+Version: 0.5.0
+Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
-Patch0: python_make.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python python-devel
@@ -48,6 +48,8 @@ Requires: ncurses
 Requires: dnsmasq
 Requires: bridge-utils
 Requires: iptables
+# needed for device enumeration
+Requires: hal
 # So remote clients can access libvirt over SSH tunnel
 # (client invokes 'nc' against the UNIX socket on the server)
 Requires: nc
@@ -89,6 +91,7 @@ BuildRequires: readline-devel
 BuildRequires: ncurses-devel
 BuildRequires: gettext
 BuildRequires: gnutls-devel
+BuildRequires: hal-devel
 %if %{with_avahi}
 BuildRequires: avahi-devel
 %endif
@@ -160,7 +163,6 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
-%patch0 -p0
 
 %build
 %if ! %{with_xen}
@@ -199,6 +201,10 @@ of recent versions of Linux (and other OSes).
 %define _without_libvirtd --without-libvirtd
 %endif
 
+%if ! %{with_uml}
+%define _without_uml --without-uml
+%endif
+
 %configure %{?_without_xen} \
            %{?_without_qemu} \
            %{?_without_openvz} \
@@ -208,6 +214,7 @@ of recent versions of Linux (and other OSes).
            %{?_without_polkit} \
            %{?_without_python} \
            %{?_without_libvirtd} \
+           %{?_without_uml} \
            --with-init-script=redhat \
            --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid \
            --with-remote-file=%{_localstatedir}/run/libvirtd.pid
@@ -396,6 +403,15 @@ fi
 %endif
 
 %changelog
+* Wed Nov 26 2008 Daniel Veillard <veillard@redhat.com> - 0.5.0-1.fc10
+- upstream release 0.5.0
+- domain lifecycle event support
+- node device enumeration
+- KVM/QEmu migration support
+- improved LXC support
+- SDL display configuration
+- User Mode Linux driver (Daniel Berrange)
+
 * Wed Sep 24 2008 Daniel Veillard <veillard@redhat.com> - 0.4.6-3.fc10
 - apply the python makefile patch for #463733
 
