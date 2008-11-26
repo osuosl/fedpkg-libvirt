@@ -1,11 +1,16 @@
 # -*- rpm-spec -*-
 
-%define with_xen       1
-%define with_xen_proxy 1
-%define with_qemu      1
-%define with_openvz    1
-%define with_lxc       1
-%define with_polkit    0
+%define with_xen       0%{!?_without_xen:1}
+%define with_xen_proxy 0%{!?_without_xen_proxy:1}
+%define with_qemu      0%{!?_without_qemu:1}
+%define with_openvz    0%{!?_without_openvz:1}
+%define with_lxc       0%{!?_without_lxc:1}
+%define with_sasl      0%{!?_without_sasl:1}
+%define with_avahi     0%{!?_without_avahi:1}
+%define with_polkit    0%{!?_without_polkit:0}
+%define with_python    0%{!?_without_python:1}
+%define with_libvirtd  0%{!?_without_libvirtd:1}
+%define with_uml       0%{!?_without_uml:1}
 
 # Xen is available only on i386 x86_64 ia64
 %ifnarch i386 i686 x86_64 ia64
@@ -22,19 +27,18 @@
 %endif
 %endif
 
-%if 0%{fedora} >= 8
-%define with_polkit    1
+%if 0%{?fedora} >= 8
+%define with_polkit    0%{!?_without_polkit:1}
 %define with_xen_proxy 0
 %endif
 
 Summary: Library providing a simple API virtualization
 Name: libvirt
-Version: 0.4.6
-Release: 2%{?dist}%{?extra_release}
+Version: 0.5.0
+Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
-Patch0: python_make.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python python-devel
@@ -44,13 +48,17 @@ Requires: ncurses
 Requires: dnsmasq
 Requires: bridge-utils
 Requires: iptables
+# needed for device enumeration
+Requires: hal
 # So remote clients can access libvirt over SSH tunnel
 # (client invokes 'nc' against the UNIX socket on the server)
 Requires: nc
+%if %{with_sasl}
 Requires: cyrus-sasl
 # Not technically required, but makes 'out-of-box' config
 # work correctly & doesn't have onerous dependencies
 Requires: cyrus-sasl-md5
+%endif
 %if %{with_polkit}
 Requires: PolicyKit >= 0.6
 %endif
@@ -83,14 +91,19 @@ BuildRequires: readline-devel
 BuildRequires: ncurses-devel
 BuildRequires: gettext
 BuildRequires: gnutls-devel
+BuildRequires: hal-devel
+%if %{with_avahi}
 BuildRequires: avahi-devel
+%endif
 BuildRequires: libselinux-devel
 BuildRequires: dnsmasq
 BuildRequires: bridge-utils
 %if %{with_qemu}
 BuildRequires: qemu
 %endif
+%if %{with_sasl}
 BuildRequires: cyrus-sasl-devel
+%endif
 %if %{with_polkit}
 BuildRequires: PolicyKit-devel >= 0.6
 %endif
@@ -134,6 +147,7 @@ Obsoletes: libvir-devel
 Includes and documentations for the C library providing an API to use
 the virtualization capabilities of recent versions of Linux (and other OSes).
 
+%if %{with_python}
 %package python
 Summary: Python bindings for the libvirt library
 Group: Development/Libraries
@@ -145,10 +159,10 @@ The libvirt-python package contains a module that permits applications
 written in the Python programming language to use the interface
 supplied by the libvirt library to use the virtualization capabilities
 of recent versions of Linux (and other OSes).
+%endif
 
 %prep
 %setup -q
-%patch0 -p0
 
 %build
 %if ! %{with_xen}
@@ -167,10 +181,40 @@ of recent versions of Linux (and other OSes).
 %define _without_lxc --without-lxc
 %endif
 
+%if ! %{with_sasl}
+%define _without_sasl --without-sasl
+%endif
+
+%if ! %{with_avahi}
+%define _without_avahi --without-avahi
+%endif
+
+%if ! %{with_polkit}
+%define _without_polkit --without-polkit
+%endif
+
+%if ! %{with_python}
+%define _without_python --without-python
+%endif
+
+%if ! %{with_libvirtd}
+%define _without_libvirtd --without-libvirtd
+%endif
+
+%if ! %{with_uml}
+%define _without_uml --without-uml
+%endif
+
 %configure %{?_without_xen} \
            %{?_without_qemu} \
            %{?_without_openvz} \
            %{?_without_lxc} \
+           %{?_without_sasl} \
+           %{?_without_avahi} \
+           %{?_without_polkit} \
+           %{?_without_python} \
+           %{?_without_libvirtd} \
+           %{?_without_uml} \
            --with-init-script=redhat \
            --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid \
            --with-remote-file=%{_localstatedir}/run/libvirtd.pid
@@ -192,6 +236,7 @@ install -d -m 0755 $RPM_BUILD_ROOT%{_localstatedir}/lib/libvirt/images/
 # Default dir for kernel+initrd images defnied in SELinux policy
 install -d -m 0755 $RPM_BUILD_ROOT%{_localstatedir}/lib/libvirt/boot/
 
+%if %{with_qemu}
 # We don't want to install /etc/libvirt/qemu/networks in the main %files list
 # because if the admin wants to delete the default network completely, we don't
 # want to end up re-incarnating it on every RPM upgrade.
@@ -202,7 +247,21 @@ rm -f $RPM_BUILD_ROOT%{_sysconfdir}/libvirt/qemu/networks/default.xml
 rm -f $RPM_BUILD_ROOT%{_sysconfdir}/libvirt/qemu/networks/autostart/default.xml
 # Strip auto-generated UUID - we need it generated per-install
 sed -i -e "/<uuid>/d" $RPM_BUILD_ROOT%{_datadir}/libvirt/networks/default.xml
+%else
+rm -f $RPM_BUILD_ROOT%{_sysconfdir}/libvirt/qemu/networks/default.xml
+rm -f $RPM_BUILD_ROOT%{_sysconfdir}/libvirt/qemu/networks/autostart/default.xml
+rm -f $RPM_BUILD_ROOT%{_datadir}/augeas/lenses/libvirtd_qemu.aug
+rm -f $RPM_BUILD_ROOT%{_datadir}/augeas/lenses/tests/test_libvirtd_qemu.aug
+%endif
 %find_lang %{name}
+
+%if ! %{with_python}
+rm -rf $RPM_BUILD_ROOT%{_datadir}/doc/libvirt-python-%{version}
+%endif
+
+%if ! %{with_qemu}
+rm -rf $RPM_BUILD_ROOT%{_sysconfdir}/libvirt/qemu.conf
+%endif
 
 %clean
 rm -fr %{buildroot}
@@ -210,6 +269,8 @@ rm -fr %{buildroot}
 %post
 /sbin/ldconfig
 
+%if %{with_libvirtd}
+%if %{with_qemu}
 # We want to install the default network for initial RPM installs
 # or on the first upgrade from a non-network aware libvirt only.
 # We check this by looking to see if the daemon is already installed
@@ -222,14 +283,18 @@ then
          > %{_sysconfdir}/libvirt/qemu/networks/default.xml
     ln -s ../default.xml %{_sysconfdir}/libvirt/qemu/networks/autostart/default.xml
 fi
+%endif
 
 /sbin/chkconfig --add libvirtd
+%endif
 
 %preun
+%if %{with_libvirtd}
 if [ $1 = 0 ]; then
     /sbin/service libvirtd stop 1>/dev/null 2>&1
     /sbin/chkconfig --del libvirtd
 fi
+%endif
 
 %postun
 /sbin/ldconfig
@@ -242,37 +307,69 @@ fi
 %{_bindir}/virsh
 %{_libdir}/lib*.so.*
 %dir %attr(0700, root, root) %{_sysconfdir}/libvirt/
+
+%if %{with_qemu}
 %dir %attr(0700, root, root) %{_sysconfdir}/libvirt/qemu/
 %dir %attr(0700, root, root) %{_sysconfdir}/libvirt/qemu/networks/
 %dir %attr(0700, root, root) %{_sysconfdir}/libvirt/qemu/networks/autostart
+%endif
+
+%if %{with_libvirtd}
 %{_sysconfdir}/rc.d/init.d/libvirtd
 %config(noreplace) %{_sysconfdir}/sysconfig/libvirtd
 %config(noreplace) %{_sysconfdir}/libvirt/libvirtd.conf
+%endif
+
+%if %{with_qemu}
 %config(noreplace) %{_sysconfdir}/libvirt/qemu.conf
+%endif
+
+%if %{with_sasl}
 %config(noreplace) %{_sysconfdir}/sasl2/libvirt.conf
+%endif
+
+%if %{with_qemu}
 %dir %{_datadir}/libvirt/
 %dir %{_datadir}/libvirt/networks/
 %{_datadir}/libvirt/networks/default.xml
+%endif
+
 %dir %{_localstatedir}/run/libvirt/
 %dir %{_localstatedir}/lib/libvirt/
 %dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/images/
 %dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/boot/
-%{_datadir}/augeas/lenses/libvirtd.aug
+
+%if %{with_qemu}
 %{_datadir}/augeas/lenses/libvirtd_qemu.aug
-%{_datadir}/augeas/lenses/tests/test_libvirtd.aug
 %{_datadir}/augeas/lenses/tests/test_libvirtd_qemu.aug
+%endif
+
+%if %{with_libvirtd}
+%{_datadir}/augeas/lenses/libvirtd.aug
+%{_datadir}/augeas/lenses/tests/test_libvirtd.aug
+%endif
+
 %if %{with_polkit}
 %{_datadir}/PolicyKit/policy/org.libvirt.unix.policy
 %endif
+
+%if %{with_qemu}
 %dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/qemu/
+%endif
+
 %if %{with_xen_proxy}
 %attr(4755, root, root) %{_libexecdir}/libvirt_proxy
 %endif
-%attr(0755, root, root) %{_libexecdir}/libvirt_parthelper
+
 %if %{with_lxc}
 %attr(0755, root, root) %{_libexecdir}/libvirt_lxc
 %endif
+
+%if %{with_libvirtd}
+%attr(0755, root, root) %{_libexecdir}/libvirt_parthelper
 %attr(0755, root, root) %{_sbindir}/libvirtd
+%endif
+
 %doc docs/*.rng
 %doc docs/*.xml
 
@@ -292,6 +389,7 @@ fi
 %doc docs/examples
 %doc docs/libvirt-api.xml
 
+%if %{with_python}
 %files python
 %defattr(-, root, root)
 
@@ -302,8 +400,18 @@ fi
 %doc python/TODO
 %doc python/libvirtclass.txt
 %doc docs/examples/python
+%endif
 
 %changelog
+* Wed Nov 26 2008 Daniel Veillard <veillard@redhat.com> - 0.5.0-1.fc9
+- upstream release 0.5.0
+- domain lifecycle event support
+- node device enumeration
+- KVM/QEmu migration support
+- improved LXC support
+- SDL display configuration
+- User Mode Linux driver (Daniel Berrange)
+
 * Wed Sep 24 2008 Daniel Veillard <veillard@redhat.com> - 0.4.6-2.fc9
 - a subtle bug in python submakefile broke the 0.4.6-1.fc9 build #463733
 
