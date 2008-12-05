@@ -34,7 +34,7 @@
 
 Summary: Library providing a simple API virtualization
 Name: libvirt
-Version: 0.5.0
+Version: 0.5.1
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -403,6 +403,11 @@ fi
 %endif
 
 %changelog
+* Fri Dec  5 2008 Daniel Veillard <veillard@redhat.com> - 0.5.1-1.fc9
+- upstream release 0.5.1
+- mostly bugfixes e.g #473071
+- some driver improvments
+
 * Wed Nov 26 2008 Daniel Veillard <veillard@redhat.com> - 0.5.0-1.fc9
 - upstream release 0.5.0
 - domain lifecycle event support
@@ -410,7 +415,7 @@ fi
 - KVM/QEmu migration support
 - improved LXC support
 - SDL display configuration
-- User Mode Linux driver (Daniel Berrange)
+- User Mode Linux driver
 
 * Wed Sep 24 2008 Daniel Veillard <veillard@redhat.com> - 0.4.6-2.fc9
 - a subtle bug in python submakefile broke the 0.4.6-1.fc9 build #463733
