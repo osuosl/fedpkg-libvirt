@@ -35,11 +35,12 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.5.1
-Release: 1%{?dist}%{?extra_release}
+Release: 2%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
+Patch0: libvirt-0.5.1-read-only-checks.patch
 URL: http://libvirt.org/
 BuildRequires: python python-devel
 Requires: libxml2
@@ -163,6 +164,7 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+%patch0 -p1
 
 %build
 %if ! %{with_xen}
@@ -403,6 +405,9 @@ fi
 %endif
 
 %changelog
+* Wed Dec 17 2008 Daniel Veillard <veillard@redhat.com> - 0.5.1-2.fc10
+- fix missing read-only access checks, fixes CVE-2008-5086
+
 * Fri Dec  5 2008 Daniel Veillard <veillard@redhat.com> - 0.5.1-1.fc10
 - upstream release 0.5.1
 - mostly bugfixes e.g #473071
