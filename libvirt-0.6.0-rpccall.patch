@@ -1,0 +1,70 @@
+diff -rup libvirt-0.6.0.orig/qemud/event.c libvirt-0.6.0.new/qemud/event.c
+--- libvirt-0.6.0.orig/qemud/event.c	2009-02-06 19:30:58.000000000 +0000
++++ libvirt-0.6.0.new/qemud/event.c	2009-02-06 19:30:00.000000000 +0000
+@@ -657,6 +657,8 @@ virPollEventToEventHandleType(int events
+         ret |= VIR_EVENT_HANDLE_WRITABLE;
+     if(events & POLLERR)
+         ret |= VIR_EVENT_HANDLE_ERROR;
++    if(events & POLLNVAL) /* Treat NVAL as error, since libvirt doesn't distinguish */
++        ret |= VIR_EVENT_HANDLE_ERROR;
+     if(events & POLLHUP)
+         ret |= VIR_EVENT_HANDLE_HANGUP;
+     return ret;
+diff -rup libvirt-0.6.0.orig/src/domain_conf.c libvirt-0.6.0.new/src/domain_conf.c
+--- libvirt-0.6.0.orig/src/domain_conf.c	2009-01-31 09:04:17.000000000 +0000
++++ libvirt-0.6.0.new/src/domain_conf.c	2009-02-06 19:30:00.000000000 +0000
+@@ -504,6 +504,7 @@ virDomainObjPtr virDomainAssignDef(virCo
+     domain->state = VIR_DOMAIN_SHUTOFF;
+     domain->def = def;
+     domain->monitor_watch = -1;
++    domain->monitor = -1;
+ 
+     if (VIR_REALLOC_N(doms->objs, doms->count + 1) < 0) {
+         virReportOOMError(conn);
+diff -rup libvirt-0.6.0.orig/src/remote_internal.c libvirt-0.6.0.new/src/remote_internal.c
+--- libvirt-0.6.0.orig/src/remote_internal.c	2009-01-31 09:04:18.000000000 +0000
++++ libvirt-0.6.0.new/src/remote_internal.c	2009-02-06 19:30:00.000000000 +0000
+@@ -6198,17 +6198,17 @@ processCalls(virConnectPtr conn,
+                 continue;
+             virReportSystemError(in_open ? NULL : conn, errno,
+                                  "%s", _("poll on socket failed"));
+-            return -1;
++            goto error;
+         }
+ 
+         if (fds[0].revents & POLLOUT) {
+             if (processCallSend(conn, priv, in_open) < 0)
+-                return -1;
++                goto error;
+         }
+ 
+         if (fds[0].revents & POLLIN) {
+             if (processCallRecv(conn, priv, in_open) < 0)
+-                return -1;
++                goto error;
+         }
+ 
+         /* Iterate through waiting threads and if
+@@ -6259,9 +6259,21 @@ processCalls(virConnectPtr conn,
+         if (fds[0].revents & (POLLHUP | POLLERR)) {
+             errorf(in_open ? NULL : conn, VIR_ERR_INTERNAL_ERROR,
+                    "%s", _("received hangup / error event on socket"));
+-            return -1;
++            goto error;
+         }
+     }
++
++
++error:
++    priv->waitDispatch = thiscall->next;
++    DEBUG("Giving up the buck due to I/O error %d %p %p", thiscall->proc_nr, thiscall, priv->waitDispatch);
++    /* See if someone else is still waiting
++     * and if so, then pass the buck ! */
++    if (priv->waitDispatch) {
++        DEBUG("Passing the buck to %d %p", priv->waitDispatch->proc_nr, priv->waitDispatch);
++        virCondSignal(&priv->waitDispatch->cond);
++    }
++    return -1;
+ }
+ 
+ /*
