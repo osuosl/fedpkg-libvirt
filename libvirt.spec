@@ -47,10 +47,12 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.6.0
-Release: 1%{?dist}%{?extra_release}
+Release: 2%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
+Patch1: %{name}-%{version}-timeout.patch
+Patch2: %{name}-%{version}-rpccall2.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python python-devel
@@ -177,6 +179,8 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+%patch1 -p1
+%patch2 -p1
 
 %build
 %if ! %{with_xen}
@@ -390,6 +394,7 @@ fi
 %if %{with_network}
 %dir %{_localstatedir}/run/libvirt/network/
 %dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/network/
+%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/iptables/
 %dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/iptables/filter/
 %dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/iptables/nat/
 %endif
@@ -408,6 +413,7 @@ fi
 %{_datadir}/PolicyKit/policy/org.libvirt.unix.policy
 %endif
 
+%dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/
 %if %{with_qemu}
 %dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/qemu/
 %endif
@@ -457,6 +463,11 @@ fi
 %endif
 
 %changelog
+* Fri Feb  6 2009 Daniel P. Berrange <berrange@redhat.com> - 0.6.0-2.fc10
+- Fix libvirtd --timeout usage
+- Fix RPC call problems and QEMU startup handling (rhbz #484414)
+- Fix unowned directories (rhbz #483442)
+
 * Sat Jan 31 2009 Daniel Veillard <veillard@redhat.com> - 0.6.0-1.fc10
 - upstream release 0.6.0
 - thread safety of API
