@@ -47,12 +47,15 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.6.0
-Release: 2%{?dist}%{?extra_release}
+Release: 3%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
 Patch1: %{name}-%{version}-timeout.patch
 Patch2: %{name}-%{version}-rpccall.patch
+Patch3: %{name}-%{version}-qemu-startup.patch
+Patch4: %{name}-%{version}-dbus-threads.patch
+Patch5: %{name}-%{version}-autostart-timeout.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python python-devel
@@ -181,6 +184,9 @@ of recent versions of Linux (and other OSes).
 %setup -q
 %patch1 -p1
 %patch2 -p1
+%patch3 -p1
+%patch4 -p1
+%patch5 -p1
 
 %build
 %if ! %{with_xen}
@@ -463,6 +469,11 @@ fi
 %endif
 
 %changelog
+* Wed Feb 18 2009 Daniel P. Berrange <berrange@redhat.com> - 0.6.0-3.fc9
+- Fix QEMU startup timeout/race (rhbz #484649)
+- Setup DBus threading. Don't allow dbus to call _exit / change SIGPIPE (rhbz #484553)
+- Fix timeout when autostarting session daemon
+
 * Fri Feb  6 2009 Daniel P. Berrange <berrange@redhat.com> - 0.6.0-2.fc9
 - Fix libvirtd --timeout usage
 - Fix RPC call problems and QEMU startup handling (rhbz #484414)
