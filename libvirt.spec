@@ -46,16 +46,11 @@
 
 Summary: Library providing a simple API virtualization
 Name: libvirt
-Version: 0.6.0
-Release: 3%{?dist}%{?extra_release}
+Version: 0.6.1
+Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
-Patch1: %{name}-%{version}-timeout.patch
-Patch2: %{name}-%{version}-rpccall2.patch
-Patch3: %{name}-%{version}-qemu-startup.patch
-Patch4: %{name}-%{version}-dbus-threads.patch
-Patch5: %{name}-%{version}-autostart-timeout.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python python-devel
@@ -182,11 +177,6 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
-%patch1 -p1
-%patch2 -p1
-%patch3 -p1
-%patch4 -p1
-%patch5 -p1
 
 %build
 %if ! %{with_xen}
@@ -259,7 +249,10 @@ rm -fr %{buildroot}
 
 %makeinstall
 (cd docs/examples ; make clean ; rm -rf .deps Makefile Makefile.in)
-(cd docs/examples/python ; rm -f Makefile Makefile.in)
+(cd docs/examples/python ; rm -rf .deps Makefile Makefile.in)
+(cd examples/hellolibvirt ; make clean ; rm -rf .deps .libs Makefile Makefile.in)
+(cd examples/domain-events/events-c ;  make clean ;rm -rf .deps .libs Makefile Makefile.in)
+
 rm -f $RPM_BUILD_ROOT%{_libdir}/*.la
 rm -f $RPM_BUILD_ROOT%{_libdir}/*.a
 rm -f $RPM_BUILD_ROOT%{_libdir}/python*/site-packages/*.la
@@ -454,6 +447,7 @@ fi
 %doc docs/*.html docs/html docs/*.gif
 %doc docs/examples
 %doc docs/libvirt-api.xml
+%doc examples
 
 %if %{with_python}
 %files python
@@ -469,6 +463,12 @@ fi
 %endif
 
 %changelog
+* Wed Mar  4 2009 Daniel Veillard <veillard@redhat.com> - 0.6.1-1.fc10
+- upstream release 0.6.1
+- support for node device detach reattach and reset
+- sVirt mandatory access control support
+- many bug fixes and small improvements
+
 * Wed Feb 18 2009 Daniel P. Berrange <berrange@redhat.com> - 0.6.0-3.fc10
 - Fix QEMU startup timeout/race (rhbz #484649)
 - Setup DBus threading. Don't allow dbus to call _exit / change SIGPIPE (rhbz #484553)
