@@ -11,7 +11,6 @@
 %define with_python    0%{!?_without_python:1}
 %define with_libvirtd  0%{!?_without_libvirtd:1}
 %define with_uml       0%{!?_without_uml:1}
-%define with_network   0%{!?_without_network:1}
 
 # Xen is available only on i386 x86_64 ia64
 %ifnarch i386 i686 x86_64 ia64
@@ -33,25 +32,15 @@
 %define with_xen_proxy 0
 %endif
 
-#
-# If building on RHEL switch on the specific support
-# for the specific Xen version
-#
-%if 0%{?fedora}
-%define with_rhel5 0
-%else
-%define with_rhel5 1
-%endif
-
-
 Summary: Library providing a simple API virtualization
 Name: libvirt
-Version: 0.6.1
-Release: 1%{?dist}%{?extra_release}
+Version: 0.5.1
+Release: 2%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
+Patch0: libvirt-0.5.1-read-only-checks.patch
 URL: http://libvirt.org/
 BuildRequires: python python-devel
 Requires: libxml2
@@ -136,8 +125,6 @@ BuildRequires: lvm2
 BuildRequires: iscsi-initiator-utils
 # For disk driver
 BuildRequires: parted-devel
-# For QEMU/LXC numa info
-BuildRequires: numactl-devel
 Obsoletes: libvir
 
 # Fedora build root suckage
@@ -177,6 +164,7 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+%patch0 -p1
 
 %build
 %if ! %{with_xen}
@@ -219,14 +207,6 @@ of recent versions of Linux (and other OSes).
 %define _without_uml --without-uml
 %endif
 
-%if %{with_rhel5}
-%define _with_rhel5_api --with-rhel5-api
-%endif
-
-%if ! %{with_network}
-%define _without_network --without-network
-%endif
-
 %configure %{?_without_xen} \
            %{?_without_qemu} \
            %{?_without_openvz} \
@@ -237,8 +217,6 @@ of recent versions of Linux (and other OSes).
            %{?_without_python} \
            %{?_without_libvirtd} \
            %{?_without_uml} \
-           %{?_without_network} \
-           %{?_with_rhel5_api} \
            --with-init-script=redhat \
            --with-qemud-pid-file=%{_localstatedir}/run/libvirt_qemud.pid \
            --with-remote-file=%{_localstatedir}/run/libvirtd.pid
@@ -249,10 +227,7 @@ rm -fr %{buildroot}
 
 %makeinstall
 (cd docs/examples ; make clean ; rm -rf .deps Makefile Makefile.in)
-(cd docs/examples/python ; rm -rf .deps Makefile Makefile.in)
-(cd examples/hellolibvirt ; make clean ; rm -rf .deps .libs Makefile Makefile.in)
-(cd examples/domain-events/events-c ;  make clean ;rm -rf .deps .libs Makefile Makefile.in)
-
+(cd docs/examples/python ; rm -f Makefile Makefile.in)
 rm -f $RPM_BUILD_ROOT%{_libdir}/*.la
 rm -f $RPM_BUILD_ROOT%{_libdir}/*.a
 rm -f $RPM_BUILD_ROOT%{_libdir}/python*/site-packages/*.la
@@ -302,7 +277,7 @@ rm -fr %{buildroot}
 # or on the first upgrade from a non-network aware libvirt only.
 # We check this by looking to see if the daemon is already installed
 /sbin/chkconfig --list libvirtd 1>/dev/null 2>&1
-if [ $? != 0 -a ! -f %{_sysconfdir}/libvirt/qemu/networks/default.xml ]
+if [ $? != 0 ]
 then
     UUID=`/usr/bin/uuidgen`
     sed -e "s,</name>,</name>\n  <uuid>$UUID</uuid>," \
@@ -345,7 +320,6 @@ fi
 %{_sysconfdir}/rc.d/init.d/libvirtd
 %config(noreplace) %{_sysconfdir}/sysconfig/libvirtd
 %config(noreplace) %{_sysconfdir}/libvirt/libvirtd.conf
-%config(noreplace) %{_sysconfdir}/logrotate.d/libvirtd
 %endif
 
 %if %{with_qemu}
@@ -362,41 +336,10 @@ fi
 %{_datadir}/libvirt/networks/default.xml
 %endif
 
-%dir %{_datadir}/libvirt/
-%dir %{_datadir}/libvirt/schemas/
-
-%{_datadir}/libvirt/schemas/domain.rng
-%{_datadir}/libvirt/schemas/network.rng
-%{_datadir}/libvirt/schemas/storagepool.rng
-%{_datadir}/libvirt/schemas/storagevol.rng
-%{_datadir}/libvirt/schemas/nodedev.rng
-%{_datadir}/libvirt/schemas/capability.rng
-
 %dir %{_localstatedir}/run/libvirt/
-
 %dir %{_localstatedir}/lib/libvirt/
 %dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/images/
 %dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/boot/
-
-%if %{with_qemu}
-%dir %{_localstatedir}/run/libvirt/qemu/
-%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/qemu/
-%endif
-%if %{with_lxc}
-%dir %{_localstatedir}/run/libvirt/lxc/
-%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/lxc/
-%endif
-%if %{with_uml}
-%dir %{_localstatedir}/run/libvirt/uml/
-%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/uml/
-%endif
-%if %{with_network}
-%dir %{_localstatedir}/run/libvirt/network/
-%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/network/
-%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/iptables/
-%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/iptables/filter/
-%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/iptables/nat/
-%endif
 
 %if %{with_qemu}
 %{_datadir}/augeas/lenses/libvirtd_qemu.aug
@@ -412,7 +355,6 @@ fi
 %{_datadir}/PolicyKit/policy/org.libvirt.unix.policy
 %endif
 
-%dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/
 %if %{with_qemu}
 %dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/qemu/
 %endif
@@ -430,6 +372,7 @@ fi
 %attr(0755, root, root) %{_sbindir}/libvirtd
 %endif
 
+%doc docs/*.rng
 %doc docs/*.xml
 
 %files devel
@@ -447,7 +390,6 @@ fi
 %doc docs/*.html docs/html docs/*.gif
 %doc docs/examples
 %doc docs/libvirt-api.xml
-%doc examples
 
 %if %{with_python}
 %files python
@@ -463,31 +405,6 @@ fi
 %endif
 
 %changelog
-* Wed Mar  4 2009 Daniel Veillard <veillard@redhat.com> - 0.6.1-1.fc10
-- upstream release 0.6.1
-- support for node device detach reattach and reset
-- sVirt mandatory access control support
-- many bug fixes and small improvements
-
-* Wed Feb 18 2009 Daniel P. Berrange <berrange@redhat.com> - 0.6.0-3.fc10
-- Fix QEMU startup timeout/race (rhbz #484649)
-- Setup DBus threading. Don't allow dbus to call _exit / change SIGPIPE (rhbz #484553)
-- Fix timeout when autostarting session daemon
-
-* Fri Feb  6 2009 Daniel P. Berrange <berrange@redhat.com> - 0.6.0-2.fc10
-- Fix libvirtd --timeout usage
-- Fix RPC call problems and QEMU startup handling (rhbz #484414)
-- Fix unowned directories (rhbz #483442)
-
-* Sat Jan 31 2009 Daniel Veillard <veillard@redhat.com> - 0.6.0-1.fc10
-- upstream release 0.6.0
-- thread safety of API
-- allow QEmu/KVM domains to survive daemon restart
-- extended logging capabilities
-- support copy on write storage volumes for QEmu/KVM
-- support of storage cache control options for QEmu/KVM
-- a lot of bug fixes
-
 * Wed Dec 17 2008 Daniel Veillard <veillard@redhat.com> - 0.5.1-2.fc10
 - fix missing read-only access checks, fixes CVE-2008-5086
 
