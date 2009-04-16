@@ -66,10 +66,13 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.6.2
-Release: 1%{?dist}%{?extra_release}
+Release: 2%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
+
+# Patches cherry-picked from upstream
+Patch0: libvirt-0.6.2-qemu-drive-format.patch
 
 # Not for upstream. Temporary hack till PulseAudio autostart
 # problems are sorted out when SELinux enforcing
@@ -223,6 +226,8 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+
+%patch0 -p1
 
 %patch200 -p0
 
@@ -542,6 +547,9 @@ fi
 %endif
 
 %changelog
+* Thu Apr 16 2009 Mark McLoughlin <markmc@redhat.com> - 0.6.2-2.fc11
+- Fix qemu drive format specification (#496092)
+
 * Fri Apr  3 2009 Daniel Veillard <veillard@redhat.com> - 0.6.2-1.fc11
 - release of 0.6.2
 - memory ballooning in QEMU
