@@ -66,7 +66,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.6.2
-Release: 2%{?dist}%{?extra_release}
+Release: 3%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
@@ -343,6 +343,8 @@ install -d -m 0755 $RPM_BUILD_ROOT%{_localstatedir}/run/libvirt/
 install -d -m 0755 $RPM_BUILD_ROOT%{_localstatedir}/lib/libvirt/images/
 # Default dir for kernel+initrd images defnied in SELinux policy
 install -d -m 0755 $RPM_BUILD_ROOT%{_localstatedir}/lib/libvirt/boot/
+# used for virDomainMemoryPeek
+install -d -m 0700 $RPM_BUILD_ROOT%{_localstatedir}/cache/libvirt/
 
 %if %{with_qemu}
 # We don't want to install /etc/libvirt/qemu/networks in the main %files list
@@ -461,6 +463,7 @@ fi
 %dir %{_localstatedir}/lib/libvirt/
 %dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/images/
 %dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/boot/
+%dir %attr(0700, root, root) %{_localstatedir}/cache/libvirt/
 
 %if %{with_qemu}
 %dir %{_localstatedir}/run/libvirt/qemu/
@@ -523,6 +526,7 @@ fi
 %dir %{_includedir}/libvirt
 %{_includedir}/libvirt/*.h
 %{_libdir}/pkgconfig/libvirt.pc
+%dir %{_datadir}/gtk-doc/html/libvirt
 %doc %{_datadir}/gtk-doc/html/libvirt/*.devhelp
 %doc %{_datadir}/gtk-doc/html/libvirt/*.html
 %doc %{_datadir}/gtk-doc/html/libvirt/*.png
@@ -547,6 +551,9 @@ fi
 %endif
 
 %changelog
+* Tue Apr 28 2009 Daniel Veillard <veillard@redhat.com> - 0.6.2-3.fc11
+- Fix missing directories in spec (#496945 and gtk-doc)
+
 * Thu Apr 16 2009 Mark McLoughlin <markmc@redhat.com> - 0.6.2-2.fc11
 - Fix qemu drive format specification (#496092)
 
