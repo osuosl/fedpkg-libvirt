@@ -66,7 +66,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.6.2
-Release: 4%{?dist}%{?extra_release}
+Release: 5%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
@@ -75,6 +75,8 @@ Source: libvirt-%{version}.tar.gz
 Patch0: libvirt-0.6.2-qemu-drive-format.patch
 # Fix shared/readonly disk labelling
 Patch1: libvirt-0.6.2-shared-readonly-label.patch
+# Fix <hostdev managed='yes'>
+Patch2: libvirt-0.6.3-hostdev-managed.patch
 
 # Not for upstream. Temporary hack till PulseAudio autostart
 # problems are sorted out when SELinux enforcing
@@ -231,6 +233,7 @@ of recent versions of Linux (and other OSes).
 
 %patch0 -p1
 %patch1 -p1
+%patch2 -p1
 
 %patch200 -p0
 
@@ -554,6 +557,9 @@ fi
 %endif
 
 %changelog
+* Wed May  6 2009 Mark McLoughlin <markmc@redhat.com> - 0.6.2-5.fc11
+- Fix handling of <hostdev managed='yes'> (bug #499386)
+
 * Tue May  5 2009 Daniel P. Berrange <berrange@redhat.com> - 0.6.2-4.fc11
 - Fix labelling of shared/readonly disks (rhbz #493692)
 
