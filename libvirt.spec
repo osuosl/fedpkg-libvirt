@@ -66,7 +66,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.6.2
-Release: 6%{?dist}%{?extra_release}
+Release: 7%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
@@ -79,6 +79,8 @@ Patch1: libvirt-0.6.2-shared-readonly-label.patch
 Patch2: libvirt-0.6.3-hostdev-managed.patch
 # Refresh qemu caps when getCapabilities is called (bz 460649)
 Patch3: libvirt-0.6.3-refresh-qemu-caps.patch
+# Enable migration with qemu 0.10
+Patch4: libvirt-0.6.2-enable-qemu-0-10-migration.patch
 
 # Not for upstream. Temporary hack till PulseAudio autostart
 # problems are sorted out when SELinux enforcing
@@ -237,6 +239,7 @@ of recent versions of Linux (and other OSes).
 %patch1 -p1
 %patch2 -p1
 %patch3 -p1
+%patch4 -p1
 
 %patch200 -p0
 
@@ -560,6 +563,9 @@ fi
 %endif
 
 %changelog
+* Thu May  7 2009 Mark McLoughlin <markmc@redhat.com> - 0.6.2-7.fc11
+- Enable migration for qemu 0.10 (bug #499704)
+
 * Wed May  6 2009 Cole Robinson <crobinso@redhat.com> - 0.6.2-6.fc11
 - Refresh qemu caps when getCapabilities is called (bug #460649)
 
