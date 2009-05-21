@@ -1,0 +1,47 @@
+From 7f7a4403860f56d5a1ad65bfd16f5bf97a971d45 Mon Sep 17 00:00:00 2001
+From: Daniel Veillard <veillard@redhat.com>
+Date: Wed, 13 May 2009 16:19:59 +0000
+Subject: [PATCH 1/1] * src/buf.c: avoid an XML attribute escaping bug #499791
+ daniel
+
+---
+ src/buf.c |   16 +++++++++++++++-
+ 1 files changed, 15 insertions(+), 1 deletions(-)
+
+diff --git a/src/buf.c b/src/buf.c
+index cdcdac9..259175d 100644
+--- a/src/buf.c
++++ b/src/buf.c
+@@ -266,7 +266,7 @@ virBufferEscapeString(const virBufferPtr buf, const char *format, const char *st
+         return;
+ 
+     len = strlen(str);
+-    if (VIR_ALLOC_N(escaped, 5 * len + 1) < 0) {
++    if (VIR_ALLOC_N(escaped, 6 * len + 1) < 0) {
+         virBufferNoMemory(buf);
+         return;
+     }
+@@ -290,6 +290,20 @@ virBufferEscapeString(const virBufferPtr buf, const char *format, const char *st
+             *out++ = 'm';
+             *out++ = 'p';
+             *out++ = ';';
++        } else if (*cur == '"') {
++            *out++ = '&';
++            *out++ = 'q';
++            *out++ = 'u';
++            *out++ = 'o';
++            *out++ = 't';
++            *out++ = ';';
++        } else if (*cur == '\'') {
++            *out++ = '&';
++            *out++ = 'a';
++            *out++ = 'p';
++            *out++ = 'o';
++            *out++ = 's';
++            *out++ = ';';
+         } else if ((*cur >= 0x20) || (*cur == '\n') || (*cur == '\t') ||
+                    (*cur == '\r')) {
+             /*
+-- 
+1.6.0.6
+
