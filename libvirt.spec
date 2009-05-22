@@ -66,7 +66,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.6.2
-Release: 9%{?dist}%{?extra_release}
+Release: 10%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
@@ -90,6 +90,8 @@ Patch7: libvirt-0.6.2-xml-attribute-escaping.patch
 # Fix serious event handling issues causing guests to be destroyed (bz 499698)
 Patch8: libvirt-0.6.2-event-handling-1.patch
 Patch9: libvirt-0.6.2-event-handling-2.patch
+# Don't log monitor output to domain log file (bz 499584)
+Patch10: libvirt-0.6.2-do-not-log-monitor-output.patch
 
 # Not for upstream. Temporary hack till PulseAudio autostart
 # problems are sorted out when SELinux enforcing
@@ -254,6 +256,7 @@ of recent versions of Linux (and other OSes).
 %patch7 -p1
 %patch8 -p1
 %patch9 -p1
+%patch10 -p1
 
 %patch200 -p0
 
@@ -577,6 +580,9 @@ fi
 %endif
 
 %changelog
+* Fri May 22 2009 Mark McLoughlin <markmc@redhat.com> - 0.6.2-10.fc11
+- Don't log monitor output to domain log file (bug #499584)
+
 * Thu May 21 2009 Mark McLoughlin <markmc@redhat.com> - 0.6.2-9.fc11
 - Fix qemu argv detection with latest qemu (bug #501923)
 - Fix XML attribute escaping (bug #499791)
