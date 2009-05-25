@@ -1,0 +1,48 @@
+From 4db7474b0c1907e877d7206edeb4d73962971096 Mon Sep 17 00:00:00 2001
+From: Daniel Veillard <veillard@redhat.com>
+Date: Tue, 12 May 2009 15:31:22 +0000
+Subject: [PATCH 1/1] * src/network_driver.c: enable bridges which are not up
+   without an IP address, patch by Ludwig Nussel
+ Daniel
+
+---
+ src/network_driver.c |    9 +++------
+ 1 files changed, 3 insertions(+), 6 deletions(-)
+
+diff --git a/src/network_driver.c b/src/network_driver.c
+index a17a769..a163b15 100644
+--- a/src/network_driver.c
++++ b/src/network_driver.c
+@@ -836,8 +836,7 @@ static int networkStartNetworkDaemon(virConnectPtr conn,
+         goto err_delbr;
+     }
+ 
+-    if (network->def->ipAddress &&
+-        (err = brSetInterfaceUp(driver->brctl, network->def->bridge, 1))) {
++    if ((err = brSetInterfaceUp(driver->brctl, network->def->bridge, 1))) {
+         virReportSystemError(conn, err,
+                              _("failed to bring the bridge '%s' up"),
+                              network->def->bridge);
+@@ -878,8 +877,7 @@ static int networkStartNetworkDaemon(virConnectPtr conn,
+     networkRemoveIptablesRules(driver, network);
+ 
+  err_delbr1:
+-    if (network->def->ipAddress &&
+-        (err = brSetInterfaceUp(driver->brctl, network->def->bridge, 0))) {
++    if ((err = brSetInterfaceUp(driver->brctl, network->def->bridge, 0))) {
+         char ebuf[1024];
+         networkLog(NETWORK_WARN, _("Failed to bring down bridge '%s' : %s\n"),
+                  network->def->bridge, virStrerror(err, ebuf, sizeof ebuf));
+@@ -920,8 +918,7 @@ static int networkShutdownNetworkDaemon(virConnectPtr conn,
+     networkRemoveIptablesRules(driver, network);
+ 
+     char ebuf[1024];
+-    if (network->def->ipAddress &&
+-        (err = brSetInterfaceUp(driver->brctl, network->def->bridge, 0))) {
++    if ((err = brSetInterfaceUp(driver->brctl, network->def->bridge, 0))) {
+         networkLog(NETWORK_WARN, _("Failed to bring down bridge '%s' : %s\n"),
+                  network->def->bridge, virStrerror(err, ebuf, sizeof ebuf));
+     }
+-- 
+1.6.0.6
+
