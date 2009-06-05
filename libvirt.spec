@@ -66,7 +66,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.6.2
-Release: 11%{?dist}%{?extra_release}
+Release: 12%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
@@ -94,6 +94,12 @@ Patch9: libvirt-0.6.2-event-handling-2.patch
 Patch10: libvirt-0.6.2-do-not-log-monitor-output.patch
 # Bring up the bridge, even if it doesn't have an IP address (bz 501912)
 Patch11: libvirt-0.6.2-bring-up-ipless-bridge.patch
+# Use the correct QEMU machine type for ppc (bz 502862)
+Patch12: libvirt-0.6.2-qemu-ppc-machine-type.patch
+# Fix crash with TLS connections (bz 503066)
+Patch13: libvirt-0.6.2-libvirtd-double-free.patch
+# Fix broken networking with newer qemu releases (bz 503275)
+Patch14: libvirt-0.6.2-avoid-broken-networking-with-newer-qemu.patch
 
 # Not for upstream. Temporary hack till PulseAudio autostart
 # problems are sorted out when SELinux enforcing
@@ -167,9 +173,6 @@ BuildRequires: avahi-devel
 BuildRequires: libselinux-devel
 BuildRequires: dnsmasq
 BuildRequires: bridge-utils
-%if %{with_qemu}
-BuildRequires: qemu
-%endif
 %if %{with_sasl}
 BuildRequires: cyrus-sasl-devel
 %endif
@@ -260,6 +263,9 @@ of recent versions of Linux (and other OSes).
 %patch9 -p1
 %patch10 -p1
 %patch11 -p1
+%patch12 -p1
+%patch13 -p1
+%patch14 -p1
 
 %patch200 -p0
 
@@ -583,6 +589,12 @@ fi
 %endif
 
 %changelog
+* Fri Jun  5 2009 Mark McLoughlin <markmc@redhat.com> - 0.6.2-12.fc11
+- Use the correct QEMU machine type for ppc (bug #502862)
+- Fix crash with TLS connections (bug #503066)
+- Fix broken networking with newer qemu releases (bug #503275)
+- Remove the qemu BuildRequires
+
 * Mon May 25 2009 Mark McLoughlin <markmc@redhat.com> - 0.6.2-11.fc11
 - Bring up the bridge, even if it doesn't have an IP address (bug #501912)
 

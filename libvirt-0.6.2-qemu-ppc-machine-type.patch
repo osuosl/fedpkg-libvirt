@@ -1,0 +1,57 @@
+From daf3db93457427c25325781af684758c0341a6aa Mon Sep 17 00:00:00 2001
+From: Daniel Veillard <veillard@redhat.com>
+Date: Fri, 29 May 2009 13:32:06 +0000
+Subject: [PATCH 1/1] PPC Qemu Machine Type update
+ * src/qemu_conf.c docs/schemas/domain.rng
+   tests/capabilityschemadata/caps-qemu-kvm.xml: PPC Qemu Machine Type
+   changed from g3bw to g3beige some time ago, patch by Thomas Baker
+ Daniel
+
+---
+ docs/schemas/domain.rng                      |    2 +-
+ src/qemu_conf.c                              |    2 +-
+ tests/capabilityschemadata/caps-qemu-kvm.xml |    2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/docs/schemas/domain.rng b/docs/schemas/domain.rng
+index 204c633..11cf04a 100644
+--- a/docs/schemas/domain.rng
++++ b/docs/schemas/domain.rng
+@@ -184,7 +184,7 @@
+       </attribute>
+       <attribute name="machine">
+         <choice>
+-          <value>g3bw</value>
++          <value>g3beige</value>
+           <value>mac99</value>
+           <value>prep</value>
+         </choice>
+diff --git a/src/qemu_conf.c b/src/qemu_conf.c
+index 18156cd..d54f2ca 100644
+--- a/src/qemu_conf.c
++++ b/src/qemu_conf.c
+@@ -192,7 +192,7 @@ static const char *const arch_info_hvm_sparc_machines[] = {
+     "sun4m"
+ };
+ static const char *const arch_info_hvm_ppc_machines[] = {
+-    "g3bw", "mac99", "prep"
++    "g3beige", "mac99", "prep"
+ };
+ 
+ static const char *const arch_info_xen_x86_machines[] = {
+diff --git a/tests/capabilityschemadata/caps-qemu-kvm.xml b/tests/capabilityschemadata/caps-qemu-kvm.xml
+index fd8523e..893f9ed 100644
+--- a/tests/capabilityschemadata/caps-qemu-kvm.xml
++++ b/tests/capabilityschemadata/caps-qemu-kvm.xml
+@@ -81,7 +81,7 @@
+     <arch name='ppc'>
+       <wordsize>32</wordsize>
+       <emulator>/usr/bin/qemu-system-ppc</emulator>
+-      <machine>g3bw</machine>
++      <machine>g3beige</machine>
+       <machine>mac99</machine>
+       <machine>prep</machine>
+       <domain type='qemu'>
+-- 
+1.6.0.6
+

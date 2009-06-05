@@ -1,0 +1,54 @@
+From c3b3f6005d45552d01823504925eb587889cf25a Mon Sep 17 00:00:00 2001
+From: Daniel P. Berrange <berrange@redhat.com>
+Date: Fri, 29 May 2009 14:34:35 +0000
+Subject: [PATCH 1/1] Avoid double-free in daemon client cleanup code
+
+---
+ qemud/qemud.c |   22 +++++++++++++++++-----
+ 1 files changed, 17 insertions(+), 5 deletions(-)
+
+diff --git a/qemud/qemud.c b/qemud/qemud.c
+index 1375560..783dc69 100644
+--- a/qemud/qemud.c
++++ b/qemud/qemud.c
+@@ -1397,7 +1397,10 @@ static int qemudDispatchServer(struct qemud_server *server, struct qemud_socket
+  * jobs have finished, then clean it up elsehwere
+  */
+ void qemudDispatchClientFailure(struct qemud_client *client) {
+-    virEventRemoveHandleImpl(client->watch);
++    if (client->watch != -1) {
++        virEventRemoveHandleImpl(client->watch);
++        client->watch = -1;
++    }
+ 
+     /* Deregister event delivery callback */
+     if(client->conn) {
+@@ -1406,12 +1406,21 @@ void qemudDispatchClientFailure(struct qemud_client *client) {
+     }
+ 
+ #if HAVE_SASL
+-    if (client->saslconn) sasl_dispose(&client->saslconn);
++    if (client->saslconn) {
++        sasl_dispose(&client->saslconn);
++        client->saslconn = NULL;
++    }
+     free(client->saslUsername);
++    client->saslUsername = NULL;
+ #endif
+-    if (client->tlssession) gnutls_deinit (client->tlssession);
+-    close(client->fd);
+-    client->fd = -1;
++    if (client->tlssession) {
++        gnutls_deinit (client->tlssession);
++        client->tlssession = NULL;
++    }
++    if (client->fd != -1) {
++        close(client->fd);
++        client->fd = -1;
++    }
+ }
+ 
+ 
+-- 
+1.6.0.6
+
