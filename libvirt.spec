@@ -66,7 +66,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.6.2
-Release: 12%{?dist}%{?extra_release}
+Release: 13%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
@@ -100,6 +100,10 @@ Patch12: libvirt-0.6.2-qemu-ppc-machine-type.patch
 Patch13: libvirt-0.6.2-libvirtd-double-free.patch
 # Fix broken networking with newer qemu releases (bz 503275)
 Patch14: libvirt-0.6.2-avoid-broken-networking-with-newer-qemu.patch
+# Fix libvirtd crash with bad capabilities data (bz 505635)
+Patch15: libvirt-0.6.2-fix-libvirtd-crash-with-bad-capabilities-data.patch
+# Don't unnecessarily try to change a file context (bug #507555)
+Patch16: libvirt-0.6.2-do-not-unnecessarily-try-to-change-a-file-context.patch
 
 # Not for upstream. Temporary hack till PulseAudio autostart
 # problems are sorted out when SELinux enforcing
@@ -266,6 +270,8 @@ of recent versions of Linux (and other OSes).
 %patch12 -p1
 %patch13 -p1
 %patch14 -p1
+%patch15 -p1
+%patch16 -p1
 
 %patch200 -p0
 
@@ -589,6 +595,10 @@ fi
 %endif
 
 %changelog
+* Fri Jul  3 2009 Mark McLoughlin <markmc@redhat.com> - 0.6.2-13.fc11
+- Fix libvirtd crash with bad capabilities data (bug #505635)
+- Don't unnecessarily try to change a file context (bug #507555)
+
 * Fri Jun  5 2009 Mark McLoughlin <markmc@redhat.com> - 0.6.2-12.fc11
 - Use the correct QEMU machine type for ppc (bug #502862)
 - Fix crash with TLS connections (bug #503066)

@@ -1,0 +1,130 @@
+From 80965bff6d46dea1808c8bbf02f50f0e289a0e65 Mon Sep 17 00:00:00 2001
+From: Daniel P. Berrange <berrange@redhat.com>
+Date: Mon, 29 Jun 2009 10:41:56 +0000
+Subject: [PATCH] Fix crash in QEMU driver with bad capabilities data
+
+---
+ src/qemu_driver.c |   80 +++++++++++++++++++++++++++++++++++-----------------
+ 1 files changed, 54 insertions(+), 26 deletions(-)
+
+diff -up libvirt-0.6.2/src/qemu_driver.c.bad-caps libvirt-0.6.2/src/qemu_driver.c
+--- libvirt-0.6.2/src/qemu_driver.c.bad-caps	2009-07-03 10:07:03.275252815 +0100
++++ libvirt-0.6.2/src/qemu_driver.c	2009-07-03 10:08:52.143502961 +0100
+@@ -360,12 +360,43 @@ next:
+     return 0;
+ }
+ 
++
++static int
++qemudSecurityCapsInit(virSecurityDriverPtr secdrv,
++                      virCapsPtr caps)
++{
++    const char *doi, *model;
++
++    doi = virSecurityDriverGetDOI(secdrv);
++    model = virSecurityDriverGetModel(secdrv);
++
++    caps->host.secModel.model = strdup(model);
++    if (!caps->host.secModel.model) {
++        char ebuf[1024];
++        VIR_ERROR(_("Failed to copy secModel model: %s"),
++                  virStrerror(errno, ebuf, sizeof ebuf));
++        return -1;
++    }
++
++    caps->host.secModel.doi = strdup(doi);
++    if (!caps->host.secModel.doi) {
++        char ebuf[1024];
++        VIR_ERROR(_("Failed to copy secModel DOI: %s"),
++                  virStrerror(errno, ebuf, sizeof ebuf));
++        return -1;
++    }
++
++    VIR_DEBUG("Initialized caps for security driver \"%s\" with "
++              "DOI \"%s\"", model, doi);
++
++    return 0;
++}
++
++
+ static int
+ qemudSecurityInit(struct qemud_driver *qemud_drv)
+ {
+     int ret;
+-    const char *doi, *model;
+-    virCapsPtr caps;
+     virSecurityDriverPtr security_drv;
+ 
+     ret = virSecurityDriverStartup(&security_drv,
+@@ -381,36 +412,17 @@ qemudSecurityInit(struct qemud_driver *q
+     }
+ 
+     qemud_drv->securityDriver = security_drv;
+-    doi = virSecurityDriverGetDOI(security_drv);
+-    model = virSecurityDriverGetModel(security_drv);
+ 
+-    VIR_DEBUG("Initialized security driver \"%s\" with "
+-              "DOI \"%s\"", model, doi);
++    VIR_INFO("Initialized security driver %s", security_drv->name);
+ 
+     /*
+      * Add security policy host caps now that the security driver is
+      * initialized.
+      */
+-    caps = qemud_drv->caps;
+-
+-    caps->host.secModel.model = strdup(model);
+-    if (!caps->host.secModel.model) {
+-        char ebuf[1024];
+-        VIR_ERROR(_("Failed to copy secModel model: %s"),
+-                  virStrerror(errno, ebuf, sizeof ebuf));
+-        return -1;
+-    }
++    return qemudSecurityCapsInit(security_drv, qemud_drv->caps);
++}
+ 
+-    caps->host.secModel.doi = strdup(doi);
+-    if (!caps->host.secModel.doi) {
+-        char ebuf[1024];
+-        VIR_ERROR(_("Failed to copy secModel DOI: %s"),
+-                  virStrerror(errno, ebuf, sizeof ebuf));
+-        return -1;
+-    }
+ 
+-    return 0;
+-}
+ 
+ /**
+  * qemudStartup:
+@@ -1852,13 +1864,29 @@ static int qemudGetNodeInfo(virConnectPt
+ 
+ static char *qemudGetCapabilities(virConnectPtr conn) {
+     struct qemud_driver *driver = conn->privateData;
++    virCapsPtr caps;
+     char *xml = NULL;
+ 
+     qemuDriverLock(driver);
++    if ((caps = qemudCapsInit()) == NULL) {
++        virReportOOMError(conn);
++        goto cleanup;
++    }
++
++    if (qemu_driver->securityDriver &&
++        qemudSecurityCapsInit(qemu_driver->securityDriver, caps) < 0) {
++        virCapabilitiesFree(caps);
++        virReportOOMError(conn);
++        goto cleanup;
++    }
++
+     virCapabilitiesFree(qemu_driver->caps);
+-    if ((qemu_driver->caps = qemudCapsInit()) == NULL ||
+-        (xml = virCapabilitiesFormatXML(driver->caps)) == NULL)
++    qemu_driver->caps = caps;
++
++    if ((xml = virCapabilitiesFormatXML(driver->caps)) == NULL)
+         virReportOOMError(conn);
++
++cleanup:
+     qemuDriverUnlock(driver);
+ 
+     return xml;

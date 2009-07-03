@@ -1,0 +1,47 @@
+From ae4523336ac06e3ff7cc7b416fad9e57998c6b54 Mon Sep 17 00:00:00 2001
+From: Tim Waugh <twaugh@redhat.com>
+Date: Fri, 3 Jul 2009 10:29:01 +0100
+Subject: [PATCH 2/3] Don't unnecessarily try to change a file context
+
+As pointed out by Tim Waugh here:
+
+  https://bugzilla.redhat.com/507555
+
+We shouldn't bother trying to set the context of a file if it already
+matches what we want.
+
+(Fixed to use STREQ() and not use tabs, as pointed out by danpb)
+
+Signed-off-by: Mark McLoughlin <markmc@redhat.com>
+---
+ src/security_selinux.c |   11 ++++++++++-
+ 1 files changed, 10 insertions(+), 1 deletions(-)
+
+diff --git a/src/security_selinux.c b/src/security_selinux.c
+index db1c27d..c2015a1 100644
+--- a/src/security_selinux.c
++++ b/src/security_selinux.c
+@@ -280,10 +280,19 @@ static int
+ SELinuxSetFilecon(virConnectPtr conn, const char *path, char *tcon)
+ {
+     char ebuf[1024];
++    security_context_t econ;
+ 
+     VIR_INFO("Setting SELinux context on '%s' to '%s'", path, tcon);
+ 
+-    if(setfilecon(path, tcon) < 0) {
++    if (setfilecon(path, tcon) < 0) {
++        if (getfilecon(path, &econ) >= 0) {
++            if (STREQ(tcon, econ)) {
++                freecon(econ);
++                /* It's alright, there's nothing to change anyway. */
++                return 0;
++            }
++            freecon(econ);
++        }
+         virSecurityReportError(conn, VIR_ERR_ERROR,
+                                _("%s: unable to set security context "
+                                  "'\%s\' on %s: %s."), __func__,
+-- 
+1.6.2.5
+
