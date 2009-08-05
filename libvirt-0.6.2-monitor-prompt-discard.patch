@@ -1,0 +1,52 @@
+commit 2d1f2e706c8b13571e1227df1c69b2302da35d5a
+Author: Daniel P. Berrange <berrange@redhat.com>
+Date:   Mon Jul 6 15:45:04 2009 +0100
+
+    Fix problem with QEMU monitor welcome prompt confusing libvirt
+    after a libvirtd daemon restart with active guests
+    
+    * src/qemu_driver: Read and dicard pending monitor data
+      before issuing new monitor commands.
+
+diff --git a/src/qemu_driver.c b/src/qemu_driver.c
+index e2b7acb..2e55045 100644
+--- a/src/qemu_driver.c
++++ b/src/qemu_driver.c
+@@ -1744,6 +1744,28 @@ cleanup:
+     qemuDriverUnlock(driver);
+ }
+ 
++
++/* Throw away any data available on the monitor
++ * This is done before executing a command, in order
++ * to allow re-synchronization if something went badly
++ * wrong in the past. it also deals with problem of
++ * QEMU *sometimes* re-printing its initial greeting
++ * when we reconnect to the monitor after restarts.
++ */
++static void
++qemuMonitorDiscardPendingData(virDomainObjPtr vm) {
++    char buf[1024];
++    int ret = 0;
++
++    /* Monitor is non-blocking, so just loop till we
++     * get -1 or 0. Don't bother with detecting
++     * errors, since we'll deal with that better later */
++    do {
++        ret = read(vm->monitor, buf, sizeof (buf)-1);
++    } while (ret > 0);
++}
++
++
+ static int
+ qemudMonitorCommandExtra(const virDomainObjPtr vm,
+                          const char *cmd,
+@@ -1755,6 +1777,8 @@ qemudMonitorCommandExtra(const virDomainObjPtr vm,
+     size_t cmdlen = strlen(cmd);
+     size_t extralen = extra ? strlen(extra) : 0;
+ 
++    qemuMonitorDiscardPendingData(vm);
++
+     if (safewrite(vm->monitor, cmd, cmdlen) != cmdlen)
+         return -1;
+     if (safewrite(vm->monitor, "\r", 1) != 1)

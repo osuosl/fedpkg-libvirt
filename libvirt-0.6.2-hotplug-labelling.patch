@@ -1,0 +1,37 @@
+commit 1795bfe4a177a5eff1b3b0a16d56df6f371c0f8e
+Author: Daniel P. Berrange <berrange@redhat.com>
+Date:   Mon Jul 6 16:01:55 2009 +0100
+
+    Fix SELinux denial during hotplug
+    
+    * src/qemu_driver.c: Relabel disk images *before* running QEMU
+    hotplug monitor commands
+
+diff --git a/src/qemu_driver.c b/src/qemu_driver.c
+index 5a0ab12..342ba01 100644
+--- a/src/qemu_driver.c
++++ b/src/qemu_driver.c
+@@ -4225,10 +4225,14 @@ static int qemudDomainAttachDevice(virDomainPtr dom,
+         switch (dev->data.disk->device) {
+         case VIR_DOMAIN_DISK_DEVICE_CDROM:
+         case VIR_DOMAIN_DISK_DEVICE_FLOPPY:
++            if (driver->securityDriver)
++                driver->securityDriver->domainSetSecurityImageLabel(dom->conn, vm, dev->data.disk);
+             ret = qemudDomainChangeEjectableMedia(dom->conn, vm, dev);
+             break;
+ 
+         case VIR_DOMAIN_DISK_DEVICE_DISK:
++            if (driver->securityDriver)
++                driver->securityDriver->domainSetSecurityImageLabel(dom->conn, vm, dev->data.disk);
+             if (dev->data.disk->bus == VIR_DOMAIN_DISK_BUS_USB) {
+                 ret = qemudDomainAttachUsbMassstorageDevice(dom->conn, vm, dev);
+             } else if (dev->data.disk->bus == VIR_DOMAIN_DISK_BUS_SCSI ||
+@@ -4240,8 +4244,6 @@ static int qemudDomainAttachDevice(virDomainPtr dom,
+                                  virDomainDiskBusTypeToString(dev->data.disk->bus));
+                 goto cleanup;
+             }
+-            if (driver->securityDriver)
+-                driver->securityDriver->domainSetSecurityImageLabel(dom->conn, vm, dev->data.disk);
+             break;
+ 
+         default:

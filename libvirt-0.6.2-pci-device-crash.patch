@@ -1,0 +1,22 @@
+commit 4a7acedd3c59a6a750576cb8680bc3f08fe0b52c
+Author: Daniel P. Berrange <berrange@redhat.com>
+Date:   Thu Jul 16 13:23:32 2009 +0100
+
+    Fix free of unitialized data upon PCI open fail
+
+diff --git a/src/pci.c b/src/pci.c
+index 3ffa0aa..4030a14 100644
+--- a/src/pci.c
++++ b/src/pci.c
+@@ -834,10 +834,8 @@ pciReadDeviceID(pciDevice *dev, const char *id_name)
+              dev->name, id_name);
+ 
+     /* ID string is '0xNNNN\n' ... i.e. 7 bytes */
+-    if (virFileReadAll(path, 7, &id_str) < 7) {
+-        VIR_FREE(id_str);
++    if (virFileReadAll(path, 7, &id_str) < 0)
+         return NULL;
+-    }
+ 
+     /* Check for 0x suffix */
+     if (id_str[0] != '0' || id_str[1] != 'x') {

@@ -66,7 +66,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.6.2
-Release: 13%{?dist}%{?extra_release}
+Release: 14%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
@@ -104,6 +104,18 @@ Patch14: libvirt-0.6.2-avoid-broken-networking-with-newer-qemu.patch
 Patch15: libvirt-0.6.2-fix-libvirtd-crash-with-bad-capabilities-data.patch
 # Don't unnecessarily try to change a file context (bug #507555)
 Patch16: libvirt-0.6.2-do-not-unnecessarily-try-to-change-a-file-context.patch
+# Misc useful fix
+Patch17: libvirt-0.6.2-monitor-prompt-discard.patch
+# rhbz #496442
+Patch18: libvirt-0.6.2-hotplug-labelling.patch
+# rhbz 499669
+Patch19: libvirt-0.6.2-hotplug-monitor-syntax.patch
+# rhbz #510907
+Patch20: libvirt-0.6.2-pci-device-crash.patch
+# rhbz #507405
+Patch21: libvirt-0.6.2-qemu-name-uniqueness.patch
+# rhbz #479517
+Patch22: libvirt-0.6.2-buf-locale-escape.patch
 
 # Not for upstream. Temporary hack till PulseAudio autostart
 # problems are sorted out when SELinux enforcing
@@ -272,6 +284,12 @@ of recent versions of Linux (and other OSes).
 %patch14 -p1
 %patch15 -p1
 %patch16 -p1
+%patch17 -p1
+%patch18 -p1
+%patch19 -p1
+%patch20 -p1
+%patch21 -p1
+%patch22 -p1
 
 %patch200 -p0
 
@@ -595,6 +613,13 @@ fi
 %endif
 
 %changelog
+* Wed Aug  5 2009 Daniel P. Berrange <berrange@redhat.com> - 0.6.2-14.fc11
+- Fix crash when attaching/detaching non-existant PCI device (rhbz #510907)
+- Fix QEMU guest name/uuid uniqueness checks (rhbz #507405)
+- Fix to use correct pci_add/del syntax for QEMU (rhbz #499669)
+- Relabel disks before hotplugging them to guest (rhbz #496442)
+- Correctly handle 8-bit high bytes when escaping XML (rhbz #479517)
+
 * Fri Jul  3 2009 Mark McLoughlin <markmc@redhat.com> - 0.6.2-13.fc11
 - Fix libvirtd crash with bad capabilities data (bug #505635)
 - Don't unnecessarily try to change a file context (bug #507555)
