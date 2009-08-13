@@ -1,0 +1,133 @@
+diff -rup libvirt-0.6.2.orig/src/capabilities.c libvirt-0.6.2.new/src/capabilities.c
+--- libvirt-0.6.2.orig/src/capabilities.c	2009-03-24 12:31:01.000000000 +0000
++++ libvirt-0.6.2.new/src/capabilities.c	2009-08-13 12:10:57.000000000 +0100
+@@ -122,6 +122,18 @@ virCapabilitiesFreeGuest(virCapsGuestPtr
+ }
+ 
+ 
++void
++virCapabilitiesFreeNUMAInfo(virCapsPtr caps)
++{
++    int i;
++
++    for (i = 0 ; i < caps->host.nnumaCell ; i++)
++        virCapabilitiesFreeHostNUMACell(caps->host.numaCell[i]);
++    VIR_FREE(caps->host.numaCell);
++    caps->host.nnumaCell = 0;
++}
++
++
+ /**
+  * virCapabilitiesFree:
+  * @caps: object to free
+@@ -141,9 +153,7 @@ virCapabilitiesFree(virCapsPtr caps) {
+     for (i = 0 ; i < caps->host.nfeatures ; i++)
+         VIR_FREE(caps->host.features[i]);
+     VIR_FREE(caps->host.features);
+-    for (i = 0 ; i < caps->host.nnumaCell ; i++)
+-        virCapabilitiesFreeHostNUMACell(caps->host.numaCell[i]);
+-    VIR_FREE(caps->host.numaCell);
++    virCapabilitiesFreeNUMAInfo(caps);
+ 
+     for (i = 0 ; i < caps->host.nmigrateTrans ; i++)
+         VIR_FREE(caps->host.migrateTrans[i]);
+diff -rup libvirt-0.6.2.orig/src/capabilities.h libvirt-0.6.2.new/src/capabilities.h
+--- libvirt-0.6.2.orig/src/capabilities.h	2009-03-24 12:31:01.000000000 +0000
++++ libvirt-0.6.2.new/src/capabilities.h	2009-08-13 11:50:46.000000000 +0100
+@@ -118,6 +118,9 @@ extern void
+ virCapabilitiesFree(virCapsPtr caps);
+ 
+ extern void
++virCapabilitiesFreeNUMAInfo(virCapsPtr caps);
++
++extern void
+ virCapabilitiesSetMacPrefix(virCapsPtr caps,
+                             unsigned char *prefix);
+ 
+diff -rup libvirt-0.6.2.orig/src/libvirt_private.syms libvirt-0.6.2.new/src/libvirt_private.syms
+--- libvirt-0.6.2.orig/src/libvirt_private.syms	2009-04-03 15:04:28.000000000 +0100
++++ libvirt-0.6.2.new/src/libvirt_private.syms	2009-08-13 11:50:59.000000000 +0100
+@@ -24,6 +24,7 @@ virCapabilitiesDefaultGuestEmulator;
+ virCapabilitiesDefaultGuestMachine;
+ virCapabilitiesFormatXML;
+ virCapabilitiesFree;
++virCapabilitiesFreeNUMAInfo;
+ virCapabilitiesNew;
+ virCapabilitiesSetMacPrefix;
+ virCapabilitiesGenerateMac;
+diff -rup libvirt-0.6.2.orig/src/lxc_conf.c libvirt-0.6.2.new/src/lxc_conf.c
+--- libvirt-0.6.2.orig/src/lxc_conf.c	2009-01-31 09:04:17.000000000 +0000
++++ libvirt-0.6.2.new/src/lxc_conf.c	2009-08-13 11:58:41.000000000 +0100
+@@ -30,6 +30,7 @@
+ #include "lxc_conf.h"
+ #include "nodeinfo.h"
+ #include "virterror_internal.h"
++#include "logging.h"
+ 
+ #define VIR_FROM_THIS VIR_FROM_LXC
+ 
+@@ -46,8 +47,14 @@ virCapsPtr lxcCapsInit(void)
+                                    0, 0)) == NULL)
+         goto no_memory;
+ 
+-    if (virCapsInitNUMA(caps) < 0)
+-        goto no_memory;
++    /* Some machines have problematic NUMA toplogy causing
++     * unexpected failures. We don't want to break the QEMU
++     * driver in this scenario, so log errors & carry on
++     */
++    if (virCapsInitNUMA(caps) < 0) {
++        virCapabilitiesFreeNUMAInfo(caps);
++        VIR_WARN0("Failed to query host NUMA topology, disabling NUMA capabilities");
++    }
+ 
+     /* XXX shouldn't 'borrow' KVM's prefix */
+     virCapabilitiesSetMacPrefix(caps, (unsigned char []){ 0x52, 0x54, 0x00 });
+diff -rup libvirt-0.6.2.orig/src/qemu_conf.c libvirt-0.6.2.new/src/qemu_conf.c
+--- libvirt-0.6.2.orig/src/qemu_conf.c	2009-08-13 11:44:11.000000000 +0100
++++ libvirt-0.6.2.new/src/qemu_conf.c	2009-08-13 11:45:34.000000000 +0100
+@@ -376,8 +376,14 @@ virCapsPtr qemudCapsInit(void) {
+     /* Using KVM's mac prefix for QEMU too */
+     virCapabilitiesSetMacPrefix(caps, (unsigned char[]){ 0x52, 0x54, 0x00 });
+ 
+-    if (virCapsInitNUMA(caps) < 0)
+-        goto no_memory;
++    /* Some machines have problematic NUMA toplogy causing
++     * unexpected failures. We don't want to break the QEMU
++     * driver in this scenario, so log errors & carry on
++     */
++    if (virCapsInitNUMA(caps) < 0) {
++        virCapabilitiesFreeNUMAInfo(caps);
++        VIR_WARN0("Failed to query host NUMA topology, disabling NUMA capabilities");
++    }
+ 
+     /* First the pure HVM guests */
+     for (i = 0 ; i < ARRAY_CARDINALITY(arch_info_hvm) ; i++)
+diff -rup libvirt-0.6.2.orig/src/uml_conf.c libvirt-0.6.2.new/src/uml_conf.c
+--- libvirt-0.6.2.orig/src/uml_conf.c	2009-01-31 09:04:18.000000000 +0000
++++ libvirt-0.6.2.new/src/uml_conf.c	2009-08-13 11:58:47.000000000 +0100
+@@ -44,6 +44,7 @@
+ #include "memory.h"
+ #include "nodeinfo.h"
+ #include "verify.h"
++#include "logging.h"
+ 
+ #define VIR_FROM_THIS VIR_FROM_UML
+ 
+@@ -62,8 +63,14 @@ virCapsPtr umlCapsInit(void) {
+                                    0, 0)) == NULL)
+         goto no_memory;
+ 
+-    if (virCapsInitNUMA(caps) < 0)
+-        goto no_memory;
++    /* Some machines have problematic NUMA toplogy causing
++     * unexpected failures. We don't want to break the QEMU
++     * driver in this scenario, so log errors & carry on
++     */
++    if (virCapsInitNUMA(caps) < 0) {
++        virCapabilitiesFreeNUMAInfo(caps);
++        VIR_WARN0("Failed to query host NUMA topology, disabling NUMA capabilities");
++    }
+ 
+     if ((guest = virCapabilitiesAddGuest(caps,
+                                          "uml",
