@@ -1,6 +1,27 @@
-diff -rup libvirt-0.6.2/src/security_selinux.c libvirt-0.6.2.new/src/security_selinux.c
---- libvirt-0.6.2/src/security_selinux.c	2009-04-03 15:36:56.000000000 +0100
-+++ libvirt-0.6.2.new/src/security_selinux.c	2009-05-05 13:39:42.000000000 +0100
+From 36cf92efa2b22f275bdc56411d9704e530cdb3fa Mon Sep 17 00:00:00 2001
+From: Mark McLoughlin <markmc@redhat.com>
+Date: Fri, 3 Jul 2009 10:26:37 +0000
+Subject: [PATCH] Re-label shared and readonly images
+
+This patch was posted ages ago here:
+
+  https://bugzilla.redhat.com/493692
+
+But was never posted upstream AFAICT.
+
+Patch from Dan Berrange
+
+(cherry picked from commit 547147084d03ebf30d09d242a5a721a4df664ffe)
+
+Fedora-patch: libvirt-0.6.2-shared-readonly-label.patch
+---
+ src/security_selinux.c |   26 +++++++++++++++++++-------
+ 1 files changed, 19 insertions(+), 7 deletions(-)
+
+diff --git a/src/security_selinux.c b/src/security_selinux.c
+index ac317d7..95fa0a6 100644
+--- a/src/security_selinux.c
++++ b/src/security_selinux.c
 @@ -24,11 +24,12 @@
  #include "virterror_internal.h"
  #include "util.h"
@@ -31,7 +52,7 @@ diff -rup libvirt-0.6.2/src/security_selinux.c libvirt-0.6.2.new/src/security_se
      return 0;
  }
  
-@@ -275,6 +281,8 @@ SELinuxSetFilecon(virConnectPtr conn, co
+@@ -275,6 +281,8 @@ SELinuxSetFilecon(virConnectPtr conn, const char *path, char *tcon)
  {
      char ebuf[1024];
  
@@ -40,7 +61,7 @@ diff -rup libvirt-0.6.2/src/security_selinux.c libvirt-0.6.2.new/src/security_se
      if(setfilecon(path, tcon) < 0) {
          virSecurityReportError(conn, VIR_ERR_ERROR,
                                 _("%s: unable to set security context "
-@@ -299,6 +307,8 @@ SELinuxRestoreSecurityImageLabel(virConn
+@@ -299,6 +307,8 @@ SELinuxRestoreSecurityImageLabel(virConnectPtr conn,
      char *newpath = NULL;
      const char *path = disk->src;
  
@@ -49,7 +70,7 @@ diff -rup libvirt-0.6.2/src/security_selinux.c libvirt-0.6.2.new/src/security_se
      if (disk->readonly || disk->shared)
          return 0;
  
-@@ -328,8 +338,13 @@ SELinuxSetSecurityImageLabel(virConnectP
+@@ -328,8 +338,13 @@ SELinuxSetSecurityImageLabel(virConnectPtr conn,
  {
      const virSecurityLabelDefPtr secdef = &vm->def->seclabel;
  
@@ -64,7 +85,7 @@ diff -rup libvirt-0.6.2/src/security_selinux.c libvirt-0.6.2.new/src/security_se
  
      return 0;
  }
-@@ -403,9 +418,6 @@ SELinuxSetSecurityLabel(virConnectPtr co
+@@ -403,9 +418,6 @@ SELinuxSetSecurityLabel(virConnectPtr conn,
  
      if (secdef->imagelabel) {
          for (i = 0 ; i < vm->def->ndisks ; i++) {
@@ -74,3 +95,6 @@ diff -rup libvirt-0.6.2/src/security_selinux.c libvirt-0.6.2.new/src/security_se
              if (SELinuxSetSecurityImageLabel(conn, vm, vm->def->disks[i]) < 0)
                  return -1;
          }
+-- 
+1.6.2.5
+

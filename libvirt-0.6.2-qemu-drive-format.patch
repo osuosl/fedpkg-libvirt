@@ -1,15 +1,17 @@
-From 0ae4c67ff5f1d24698c5cfc8a9719d333c892644 Mon Sep 17 00:00:00 2001
+From bf7b58a2471a07111f8022c0176f45ee5dc5fe71 Mon Sep 17 00:00:00 2001
 From: Mark McLoughlin <markmc@redhat.com>
-Date: Thu, 16 Apr 2009 11:23:55 +0100
-Subject: [PATCH 1/3] qemu -drive takes format= not fmt=
+Date: Thu, 16 Apr 2009 14:21:35 +0000
+Subject: [PATCH] qemu -drive takes format= not fmt=
 
 Seems like a simple typo - it has been "format=" since the flag
 was introduced, but we added it as "fmt=".
 
-Signed-off-by: Mark McLoughlin <markmc@redhat.com>
+(cherry picked from commit 9fa79000ecc883c699a6cb1ce7f00c34881bc8fe)
+
+Fedora-patch: libvirt-0.6.2-qemu-drive-format.patch
 ---
- src/qemu_conf.c                                    |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ src/qemu_conf.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
 diff --git a/src/qemu_conf.c b/src/qemu_conf.c
 index f36c927..6f9e610 100644
@@ -24,3 +26,6 @@ index f36c927..6f9e610 100644
  
              if (disk->cachemode) {
                  const char *mode =
+-- 
+1.6.2.5
+

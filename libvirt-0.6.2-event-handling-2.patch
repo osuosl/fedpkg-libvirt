@@ -1,17 +1,20 @@
-From 6483ee77ed12f037d68a6adc690624fa1b508dc0 Mon Sep 17 00:00:00 2001
+From ef1a3eaa58d83c3367a1addff6c8132f27aa09dd Mon Sep 17 00:00:00 2001
 From: Daniel P. Berrange <berrange@redhat.com>
 Date: Tue, 12 May 2009 16:43:04 +0000
-Subject: [PATCH 2/2] Fix watch/timer event deletion
+Subject: [PATCH] Fix watch/timer event deletion
 
+(cherry picked from commit 470317f5c71cbcc6b6d8d83d0978aea3510d3698)
+
+Fedora-patch: libvirt-0.6.2-event-handling-2.patch
 ---
  qemud/event.c |  112 ++++++++++++++++++++++++++-------------------------------
  1 files changed, 51 insertions(+), 61 deletions(-)
 
 diff --git a/qemud/event.c b/qemud/event.c
-index 754f2b1..a57d967 100644
+index 4dc1020..8bc7c34 100644
 --- a/qemud/event.c
 +++ b/qemud/event.c
-@@ -313,7 +313,7 @@ static int virEventCalculateTimeout(int *timeout) {
+@@ -312,7 +312,7 @@ static int virEventCalculateTimeout(int *timeout) {
      EVENT_DEBUG("Calculate expiry of %d timers", eventLoop.timeoutsCount);
      /* Figure out if we need a timeout */
      for (i = 0 ; i < eventLoop.timeoutsCount ; i++) {
@@ -20,7 +23,7 @@ index 754f2b1..a57d967 100644
              continue;
  
          EVENT_DEBUG("Got a timeout scheduled for %llu", eventLoop.timeouts[i].expiresAt);
-@@ -350,32 +350,26 @@ static int virEventCalculateTimeout(int *timeout) {
+@@ -349,32 +349,26 @@ static int virEventCalculateTimeout(int *timeout) {
   * file handles. The caller must free the returned data struct
   * returns: the pollfd array, or NULL on error
   */
@@ -66,7 +69,7 @@ index 754f2b1..a57d967 100644
  }
  
  
-@@ -435,26 +429,30 @@ static int virEventDispatchTimeouts(void) {
+@@ -434,26 +428,30 @@ static int virEventDispatchTimeouts(void) {
   * Returns 0 upon success, -1 if an error occurred
   */
  static int virEventDispatchHandles(int nfds, struct pollfd *fds) {
@@ -106,7 +109,7 @@ index 754f2b1..a57d967 100644
      }
  
      return 0;
-@@ -545,22 +543,21 @@ static int virEventCleanupHandles(void) {
+@@ -544,22 +542,21 @@ static int virEventCleanupHandles(void) {
   * at least one file handle has an event, or a timer expires
   */
  int virEventRunOnce(void) {
@@ -138,7 +141,7 @@ index 754f2b1..a57d967 100644
  
      virEventUnlock();
  
-@@ -572,38 +569,31 @@ int virEventRunOnce(void) {
+@@ -571,38 +568,31 @@ int virEventRunOnce(void) {
          if (errno == EINTR) {
              goto retry;
          }
@@ -193,5 +196,5 @@ index 754f2b1..a57d967 100644
  
  static void virEventHandleWakeup(int watch ATTRIBUTE_UNUSED,
 -- 
-1.6.0.6
+1.6.2.5
 

@@ -1,12 +1,11 @@
-From daf3db93457427c25325781af684758c0341a6aa Mon Sep 17 00:00:00 2001
+From 5c1ff776a3194bcc5d593aedd36cd676f1fcab64 Mon Sep 17 00:00:00 2001
 From: Daniel Veillard <veillard@redhat.com>
 Date: Fri, 29 May 2009 13:32:06 +0000
-Subject: [PATCH 1/1] PPC Qemu Machine Type update
- * src/qemu_conf.c docs/schemas/domain.rng
-   tests/capabilityschemadata/caps-qemu-kvm.xml: PPC Qemu Machine Type
-   changed from g3bw to g3beige some time ago, patch by Thomas Baker
- Daniel
+Subject: [PATCH] PPC Qemu Machine Type update * src/qemu_conf.c docs/schemas/domain.rng tests/capabilityschemadata/caps-qemu-kvm.xml: PPC Qemu Machine Type changed from g3bw to g3beige some time ago, patch by Thomas Baker
 
+(cherry picked from commit 525c3d40a97a1ccce7c4dc314d2dd9e780b50d41)
+
+Fedora-patch: libvirt-0.6.2-qemu-ppc-machine-type.patch
 ---
  docs/schemas/domain.rng                      |    2 +-
  src/qemu_conf.c                              |    2 +-
@@ -14,7 +13,7 @@ Subject: [PATCH 1/1] PPC Qemu Machine Type update
  3 files changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/docs/schemas/domain.rng b/docs/schemas/domain.rng
-index 204c633..11cf04a 100644
+index 2f784e1..b29079a 100644
 --- a/docs/schemas/domain.rng
 +++ b/docs/schemas/domain.rng
 @@ -184,7 +184,7 @@
@@ -27,7 +26,7 @@ index 204c633..11cf04a 100644
            <value>prep</value>
          </choice>
 diff --git a/src/qemu_conf.c b/src/qemu_conf.c
-index 18156cd..d54f2ca 100644
+index 3e7e32d..fc0e772 100644
 --- a/src/qemu_conf.c
 +++ b/src/qemu_conf.c
 @@ -192,7 +192,7 @@ static const char *const arch_info_hvm_sparc_machines[] = {
@@ -53,5 +52,5 @@ index fd8523e..893f9ed 100644
        <machine>prep</machine>
        <domain type='qemu'>
 -- 
-1.6.0.6
+1.6.2.5
 

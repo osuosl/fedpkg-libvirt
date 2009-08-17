@@ -1,14 +1,20 @@
-commit 4a7acedd3c59a6a750576cb8680bc3f08fe0b52c
-Author: Daniel P. Berrange <berrange@redhat.com>
-Date:   Thu Jul 16 13:23:32 2009 +0100
+From d5d67ea357d92759d4a9ecb213e577835f961eed Mon Sep 17 00:00:00 2001
+From: Daniel P. Berrange <berrange@redhat.com>
+Date: Thu, 16 Jul 2009 13:23:32 +0100
+Subject: [PATCH] Fix free of unitialized data upon PCI open fail
 
-    Fix free of unitialized data upon PCI open fail
+(cherry picked from commit 4a7acedd3c59a6a750576cb8680bc3f08fe0b52c)
+
+Fedora-patch: libvirt-0.6.2-pci-device-crash.patch
+---
+ src/pci.c |    4 +---
+ 1 files changed, 1 insertions(+), 3 deletions(-)
 
 diff --git a/src/pci.c b/src/pci.c
-index 3ffa0aa..4030a14 100644
+index ed64d68..68a380d 100644
 --- a/src/pci.c
 +++ b/src/pci.c
-@@ -834,10 +834,8 @@ pciReadDeviceID(pciDevice *dev, const char *id_name)
+@@ -829,10 +829,8 @@ pciReadDeviceID(pciDevice *dev, const char *id_name)
               dev->name, id_name);
  
      /* ID string is '0xNNNN\n' ... i.e. 7 bytes */
@@ -20,3 +26,6 @@ index 3ffa0aa..4030a14 100644
  
      /* Check for 0x suffix */
      if (id_str[0] != '0' || id_str[1] != 'x') {
+-- 
+1.6.2.5
+

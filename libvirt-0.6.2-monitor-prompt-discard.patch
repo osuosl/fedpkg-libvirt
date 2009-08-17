@@ -1,18 +1,23 @@
-commit 2d1f2e706c8b13571e1227df1c69b2302da35d5a
-Author: Daniel P. Berrange <berrange@redhat.com>
-Date:   Mon Jul 6 15:45:04 2009 +0100
+From eb2fad7e94ba9bf48787e24542931688b9926ca1 Mon Sep 17 00:00:00 2001
+From: Daniel P. Berrange <berrange@redhat.com>
+Date: Mon, 6 Jul 2009 15:45:04 +0100
+Subject: [PATCH] Fix problem with QEMU monitor welcome prompt confusing libvirt after a libvirtd daemon restart with active guests
 
-    Fix problem with QEMU monitor welcome prompt confusing libvirt
-    after a libvirtd daemon restart with active guests
-    
-    * src/qemu_driver: Read and dicard pending monitor data
-      before issuing new monitor commands.
+* src/qemu_driver: Read and dicard pending monitor data
+  before issuing new monitor commands.
+
+(cherry picked from commit 2d1f2e706c8b13571e1227df1c69b2302da35d5a)
+
+Fedora-patch: libvirt-0.6.2-monitor-prompt-discard.patch
+---
+ src/qemu_driver.c |   24 ++++++++++++++++++++++++
+ 1 files changed, 24 insertions(+), 0 deletions(-)
 
 diff --git a/src/qemu_driver.c b/src/qemu_driver.c
-index e2b7acb..2e55045 100644
+index 3d3675c..5fc21a1 100644
 --- a/src/qemu_driver.c
 +++ b/src/qemu_driver.c
-@@ -1744,6 +1744,28 @@ cleanup:
+@@ -1636,6 +1636,28 @@ cleanup:
      qemuDriverUnlock(driver);
  }
  
@@ -41,7 +46,7 @@ index e2b7acb..2e55045 100644
  static int
  qemudMonitorCommandExtra(const virDomainObjPtr vm,
                           const char *cmd,
-@@ -1755,6 +1777,8 @@ qemudMonitorCommandExtra(const virDomainObjPtr vm,
+@@ -1647,6 +1669,8 @@ qemudMonitorCommandExtra(const virDomainObjPtr vm,
      size_t cmdlen = strlen(cmd);
      size_t extralen = extra ? strlen(extra) : 0;
  
@@ -50,3 +55,6 @@ index e2b7acb..2e55045 100644
      if (safewrite(vm->monitor, cmd, cmdlen) != cmdlen)
          return -1;
      if (safewrite(vm->monitor, "\r", 1) != 1)
+-- 
+1.6.2.5
+

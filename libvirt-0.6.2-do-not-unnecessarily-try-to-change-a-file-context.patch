@@ -1,7 +1,7 @@
-From ae4523336ac06e3ff7cc7b416fad9e57998c6b54 Mon Sep 17 00:00:00 2001
-From: Tim Waugh <twaugh@redhat.com>
-Date: Fri, 3 Jul 2009 10:29:01 +0100
-Subject: [PATCH 2/3] Don't unnecessarily try to change a file context
+From 2d299525f5de29d11c6dc4810aa41e893535695b Mon Sep 17 00:00:00 2001
+From: Mark McLoughlin <markmc@redhat.com>
+Date: Fri, 3 Jul 2009 10:27:46 +0000
+Subject: [PATCH] Don't unnecessarily try to change a file context
 
 As pointed out by Tim Waugh here:
 
@@ -12,13 +12,15 @@ matches what we want.
 
 (Fixed to use STREQ() and not use tabs, as pointed out by danpb)
 
-Signed-off-by: Mark McLoughlin <markmc@redhat.com>
+(cherry picked from commit add254feeaa830dd5af1118c141cb140bf55b5a7)
+
+Fedora-patch: libvirt-0.6.2-do-not-unnecessarily-try-to-change-a-file-context.patch
 ---
  src/security_selinux.c |   11 ++++++++++-
  1 files changed, 10 insertions(+), 1 deletions(-)
 
 diff --git a/src/security_selinux.c b/src/security_selinux.c
-index db1c27d..c2015a1 100644
+index 450fce2..8ebe1fe 100644
 --- a/src/security_selinux.c
 +++ b/src/security_selinux.c
 @@ -280,10 +280,19 @@ static int

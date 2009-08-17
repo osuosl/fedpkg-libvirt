@@ -1,19 +1,23 @@
-From fbd16cecc72494e8a9450f38197221f2f50c9d0e Mon Sep 17 00:00:00 2001
+From 182a3cac2b4339e988802eb02279e7ab4c883c67 Mon Sep 17 00:00:00 2001
 From: =?utf-8?q?Guido=20G=C3=BCnther?= <agx@sigxcpu.org>
 Date: Thu, 16 Apr 2009 15:56:27 +0000
-Subject: [PATCH 1/1] Don't log monitor output to domain log file.
+Subject: [PATCH] Don't log monitor output to domain log file.
 
 It's logged via the logging system already. Prefix monitor debug output with vm
 name.
+
+(cherry picked from commit 5caa1e0eb050a12fe8ed02cf635bb672a56cdb6f)
+
+Fedora-patch: libvirt-0.6.2-do-not-log-monitor-output.patch
 ---
  src/qemu_driver.c |   60 +++++++++++++++++++++-------------------------------
  1 files changed, 24 insertions(+), 36 deletions(-)
 
 diff --git a/src/qemu_driver.c b/src/qemu_driver.c
-index 79ee072..f5b5fa5 100644
+index 5ca3d20..cb738b2 100644
 --- a/src/qemu_driver.c
 +++ b/src/qemu_driver.c
-@@ -1710,27 +1710,11 @@ qemudMonitorCommandExtra(const virDomainObjPtr vm,
+@@ -1706,27 +1706,11 @@ qemudMonitorCommandExtra(const virDomainObjPtr vm,
              goto error;
          }
      }
@@ -42,7 +46,7 @@ index 79ee072..f5b5fa5 100644
      return -1;
  }
  
-@@ -2463,7 +2447,7 @@ static int qemudDomainGetMemoryBalloon(virConnectPtr conn,
+@@ -2461,7 +2445,7 @@ static int qemudDomainGetMemoryBalloon(virConnectPtr conn,
          goto cleanup;
      }
  
@@ -51,7 +55,7 @@ index 79ee072..f5b5fa5 100644
      if ((offset = strstr(reply, BALLOON_PREFIX)) != NULL) {
          unsigned int memMB;
          char *end;
-@@ -2517,7 +2501,7 @@ static int qemudDomainSetMemoryBalloon(virConnectPtr conn,
+@@ -2515,7 +2499,7 @@ static int qemudDomainSetMemoryBalloon(virConnectPtr conn,
  
      /* If the command failed qemu prints: 'unknown command'
       * No message is printed on success it seems */
@@ -60,7 +64,7 @@ index 79ee072..f5b5fa5 100644
      if (strstr(reply, "\nunknown command:")) {
          /* Don't set error - it is expected memory balloon fails on many qemu */
          ret = 0;
-@@ -2812,7 +2796,7 @@ static int qemudDomainSave(virDomainPtr dom,
+@@ -2810,7 +2794,7 @@ static int qemudDomainSave(virDomainPtr dom,
          goto cleanup;
      }
  
@@ -69,7 +73,7 @@ index 79ee072..f5b5fa5 100644
  
      /* If the command isn't supported then qemu prints:
       * unknown command: migrate" */
-@@ -3658,7 +3642,7 @@ static int qemudDomainChangeEjectableMedia(virConnectPtr conn,
+@@ -3662,7 +3646,7 @@ static int qemudDomainChangeEjectableMedia(virConnectPtr conn,
      /* If the command failed qemu prints:
       * device not found, device is locked ...
       * No message is printed on success it seems */
@@ -78,7 +82,7 @@ index 79ee072..f5b5fa5 100644
      if (strstr(reply, "\ndevice ")) {
          qemudReportError (conn, dom, NULL, VIR_ERR_OPERATION_FAILED,
                            _("changing cdrom media failed: %s"), reply);
-@@ -3719,7 +3703,7 @@ static int qemudDomainAttachPciDiskDevice(virConnectPtr conn,
+@@ -3723,7 +3707,7 @@ static int qemudDomainAttachPciDiskDevice(virConnectPtr conn,
          return -1;
      }
  
@@ -87,7 +91,7 @@ index 79ee072..f5b5fa5 100644
      /* If the command succeeds qemu prints:
       * OK bus 0... */
  #define PCI_ATTACH_OK_MSG "OK bus 0, slot "
-@@ -3787,7 +3771,7 @@ static int qemudDomainAttachUsbMassstorageDevice(virConnectPtr conn,
+@@ -3791,7 +3775,7 @@ static int qemudDomainAttachUsbMassstorageDevice(virConnectPtr conn,
          return -1;
      }
  
@@ -96,7 +100,7 @@ index 79ee072..f5b5fa5 100644
      /* If the command failed qemu prints:
       * Could not add ... */
      if (strstr(reply, "Could not add ")) {
-@@ -3841,7 +3825,7 @@ static int qemudDomainAttachHostDevice(virConnectPtr conn,
+@@ -3845,7 +3829,7 @@ static int qemudDomainAttachHostDevice(virConnectPtr conn,
          return -1;
      }
  
@@ -105,7 +109,7 @@ index 79ee072..f5b5fa5 100644
      /* If the command failed qemu prints:
       * Could not add ... */
      if (strstr(reply, "Could not add ")) {
-@@ -3980,7 +3964,7 @@ static int qemudDomainDetachPciDiskDevice(virConnectPtr conn,
+@@ -3984,7 +3968,7 @@ static int qemudDomainDetachPciDiskDevice(virConnectPtr conn,
          goto cleanup;
      }
  
@@ -114,7 +118,7 @@ index 79ee072..f5b5fa5 100644
      /* If the command fails due to a wrong slot qemu prints: invalid slot,
       * nothing is printed on success */
      if (strstr(reply, "invalid slot")) {
-@@ -4210,7 +4194,7 @@ qemudDomainBlockStats (virDomainPtr dom,
+@@ -4214,7 +4198,7 @@ qemudDomainBlockStats (virDomainPtr dom,
                            "%s", _("'info blockstats' command failed"));
          goto cleanup;
      }
@@ -123,7 +127,7 @@ index 79ee072..f5b5fa5 100644
  
      /* If the command isn't supported then qemu prints the supported
       * info commands, so the output starts "info ".  Since this is
-@@ -4251,21 +4235,25 @@ qemudDomainBlockStats (virDomainPtr dom,
+@@ -4255,21 +4239,25 @@ qemudDomainBlockStats (virDomainPtr dom,
                  if (STRPREFIX (p, "rd_bytes=")) {
                      p += 9;
                      if (virStrToLong_ll (p, &dummy, 10, &stats->rd_bytes) == -1)
@@ -154,7 +158,7 @@ index 79ee072..f5b5fa5 100644
  
                  /* Skip to next label. */
                  p = strchr (p, ' ');
-@@ -4477,7 +4465,7 @@ qemudDomainMemoryPeek (virDomainPtr dom,
+@@ -4481,7 +4469,7 @@ qemudDomainMemoryPeek (virDomainPtr dom,
          goto cleanup;
      }
  
@@ -163,7 +167,7 @@ index 79ee072..f5b5fa5 100644
  
      /* Read the memory file into buffer. */
      if (saferead (fd, buffer, size) == (ssize_t) -1) {
-@@ -4794,7 +4782,7 @@ qemudDomainMigratePerform (virDomainPtr dom,
+@@ -4798,7 +4786,7 @@ qemudDomainMigratePerform (virDomainPtr dom,
                               "%s", _("off-line migration specified, but suspend operation failed"));
              goto cleanup;
          }
@@ -172,7 +176,7 @@ index 79ee072..f5b5fa5 100644
          VIR_FREE(info);
          paused = 1;
  
-@@ -4811,7 +4799,7 @@ qemudDomainMigratePerform (virDomainPtr dom,
+@@ -4815,7 +4803,7 @@ qemudDomainMigratePerform (virDomainPtr dom,
          snprintf (cmd, sizeof cmd, "migrate_set_speed %lum", resource);
          qemudMonitorCommand (vm, cmd, &info);
  
@@ -181,7 +185,7 @@ index 79ee072..f5b5fa5 100644
          VIR_FREE (info);
      }
  
-@@ -4830,7 +4818,7 @@ qemudDomainMigratePerform (virDomainPtr dom,
+@@ -4834,7 +4822,7 @@ qemudDomainMigratePerform (virDomainPtr dom,
          goto cleanup;
      }
  
@@ -190,7 +194,7 @@ index 79ee072..f5b5fa5 100644
  
      /* Now check for "fail" in the output string */
      if (strstr(info, "fail") != NULL) {
-@@ -4869,7 +4857,7 @@ cleanup:
+@@ -4873,7 +4861,7 @@ cleanup:
                        vm->def->name);
          }
          else {
@@ -200,5 +204,5 @@ index 79ee072..f5b5fa5 100644
          }
  
 -- 
-1.6.0.6
+1.6.2.5
 

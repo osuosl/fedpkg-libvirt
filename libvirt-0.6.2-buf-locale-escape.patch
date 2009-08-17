@@ -1,13 +1,19 @@
-commit 8feb499ba2c3625632210c997b49f5df515c05d4
-Author: Daniel P. Berrange <berrange@redhat.com>
-Date:   Tue Aug 4 18:13:09 2009 +0100
+From f793cd9b7220145b6df8086d77db4fdc035d680b Mon Sep 17 00:00:00 2001
+From: Daniel P. Berrange <berrange@redhat.com>
+Date: Tue, 4 Aug 2009 18:13:09 +0100
+Subject: [PATCH] Fix escaping of 8-bit high characters
 
-    Fix escaping of 8-bit high characters
-    
-    Fix  https://bugzilla.redhat.com/show_bug.cgi?id=479517
-    
-    * src/buf.c: Cast to 'unsigned char' before doing compare to
-      avoid rejecting 8-bit high characters
+Fix  https://bugzilla.redhat.com/show_bug.cgi?id=479517
+
+* src/buf.c: Cast to 'unsigned char' before doing compare to
+  avoid rejecting 8-bit high characters
+
+(cherry picked from commit 8feb499ba2c3625632210c997b49f5df515c05d4)
+
+Fedora-patch: libvirt-0.6.2-buf-locale-escape.patch
+---
+ src/buf.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
 diff --git a/src/buf.c b/src/buf.c
 index 259175d..c802aa2 100644
@@ -22,3 +28,6 @@ index 259175d..c802aa2 100644
                     (*cur == '\r')) {
              /*
               * default case, just copy !
+-- 
+1.6.2.5
+

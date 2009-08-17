@@ -1,7 +1,25 @@
-diff -rup libvirt-0.6.2.orig/src/capabilities.c libvirt-0.6.2.new/src/capabilities.c
---- libvirt-0.6.2.orig/src/capabilities.c	2009-03-24 12:31:01.000000000 +0000
-+++ libvirt-0.6.2.new/src/capabilities.c	2009-08-13 12:10:57.000000000 +0100
-@@ -122,6 +122,18 @@ virCapabilitiesFreeGuest(virCapsGuestPtr
+From 3cf2f90a4747547f9877b15c1f573f8a771098e8 Mon Sep 17 00:00:00 2001
+From: Daniel P. Berrange <berrange@redhat.com>
+Date: Mon, 29 Jun 2009 10:41:56 +0000
+Subject: [PATCH] Fix crash in QEMU driver with bad capabilities data
+
+(cherry picked from commit 39c7e7a6b79bbdfa36928a430d56fa88a204e8fd)
+
+Fedora-patch: libvirt-0.6.2-numa-ignore-fail.patch
+---
+ src/capabilities.c       |   16 +++++++++++++---
+ src/capabilities.h       |    3 +++
+ src/libvirt_private.syms |    1 +
+ src/lxc_conf.c           |   11 +++++++++--
+ src/qemu_conf.c          |   10 ++++++++--
+ src/uml_conf.c           |   11 +++++++++--
+ 6 files changed, 43 insertions(+), 9 deletions(-)
+
+diff --git a/src/capabilities.c b/src/capabilities.c
+index d6e3478..8dc32a1 100644
+--- a/src/capabilities.c
++++ b/src/capabilities.c
+@@ -122,6 +122,18 @@ virCapabilitiesFreeGuest(virCapsGuestPtr guest)
  }
  
  
@@ -31,9 +49,10 @@ diff -rup libvirt-0.6.2.orig/src/capabilities.c libvirt-0.6.2.new/src/capabiliti
  
      for (i = 0 ; i < caps->host.nmigrateTrans ; i++)
          VIR_FREE(caps->host.migrateTrans[i]);
-diff -rup libvirt-0.6.2.orig/src/capabilities.h libvirt-0.6.2.new/src/capabilities.h
---- libvirt-0.6.2.orig/src/capabilities.h	2009-03-24 12:31:01.000000000 +0000
-+++ libvirt-0.6.2.new/src/capabilities.h	2009-08-13 11:50:46.000000000 +0100
+diff --git a/src/capabilities.h b/src/capabilities.h
+index 5b0bbab..1b49666 100644
+--- a/src/capabilities.h
++++ b/src/capabilities.h
 @@ -118,6 +118,9 @@ extern void
  virCapabilitiesFree(virCapsPtr caps);
  
@@ -44,9 +63,10 @@ diff -rup libvirt-0.6.2.orig/src/capabilities.h libvirt-0.6.2.new/src/capabiliti
  virCapabilitiesSetMacPrefix(virCapsPtr caps,
                              unsigned char *prefix);
  
-diff -rup libvirt-0.6.2.orig/src/libvirt_private.syms libvirt-0.6.2.new/src/libvirt_private.syms
---- libvirt-0.6.2.orig/src/libvirt_private.syms	2009-04-03 15:04:28.000000000 +0100
-+++ libvirt-0.6.2.new/src/libvirt_private.syms	2009-08-13 11:50:59.000000000 +0100
+diff --git a/src/libvirt_private.syms b/src/libvirt_private.syms
+index 350a931..9249a1a 100644
+--- a/src/libvirt_private.syms
++++ b/src/libvirt_private.syms
 @@ -24,6 +24,7 @@ virCapabilitiesDefaultGuestEmulator;
  virCapabilitiesDefaultGuestMachine;
  virCapabilitiesFormatXML;
@@ -55,9 +75,10 @@ diff -rup libvirt-0.6.2.orig/src/libvirt_private.syms libvirt-0.6.2.new/src/libv
  virCapabilitiesNew;
  virCapabilitiesSetMacPrefix;
  virCapabilitiesGenerateMac;
-diff -rup libvirt-0.6.2.orig/src/lxc_conf.c libvirt-0.6.2.new/src/lxc_conf.c
---- libvirt-0.6.2.orig/src/lxc_conf.c	2009-01-31 09:04:17.000000000 +0000
-+++ libvirt-0.6.2.new/src/lxc_conf.c	2009-08-13 11:58:41.000000000 +0100
+diff --git a/src/lxc_conf.c b/src/lxc_conf.c
+index 34c8aea..fe721e3 100644
+--- a/src/lxc_conf.c
++++ b/src/lxc_conf.c
 @@ -30,6 +30,7 @@
  #include "lxc_conf.h"
  #include "nodeinfo.h"
@@ -83,9 +104,10 @@ diff -rup libvirt-0.6.2.orig/src/lxc_conf.c libvirt-0.6.2.new/src/lxc_conf.c
  
      /* XXX shouldn't 'borrow' KVM's prefix */
      virCapabilitiesSetMacPrefix(caps, (unsigned char []){ 0x52, 0x54, 0x00 });
-diff -rup libvirt-0.6.2.orig/src/qemu_conf.c libvirt-0.6.2.new/src/qemu_conf.c
---- libvirt-0.6.2.orig/src/qemu_conf.c	2009-08-13 11:44:11.000000000 +0100
-+++ libvirt-0.6.2.new/src/qemu_conf.c	2009-08-13 11:45:34.000000000 +0100
+diff --git a/src/qemu_conf.c b/src/qemu_conf.c
+index 99f13c6..1194e36 100644
+--- a/src/qemu_conf.c
++++ b/src/qemu_conf.c
 @@ -376,8 +376,14 @@ virCapsPtr qemudCapsInit(void) {
      /* Using KVM's mac prefix for QEMU too */
      virCapabilitiesSetMacPrefix(caps, (unsigned char[]){ 0x52, 0x54, 0x00 });
@@ -103,9 +125,10 @@ diff -rup libvirt-0.6.2.orig/src/qemu_conf.c libvirt-0.6.2.new/src/qemu_conf.c
  
      /* First the pure HVM guests */
      for (i = 0 ; i < ARRAY_CARDINALITY(arch_info_hvm) ; i++)
-diff -rup libvirt-0.6.2.orig/src/uml_conf.c libvirt-0.6.2.new/src/uml_conf.c
---- libvirt-0.6.2.orig/src/uml_conf.c	2009-01-31 09:04:18.000000000 +0000
-+++ libvirt-0.6.2.new/src/uml_conf.c	2009-08-13 11:58:47.000000000 +0100
+diff --git a/src/uml_conf.c b/src/uml_conf.c
+index c0d086e..9dd4967 100644
+--- a/src/uml_conf.c
++++ b/src/uml_conf.c
 @@ -44,6 +44,7 @@
  #include "memory.h"
  #include "nodeinfo.h"
@@ -131,3 +154,6 @@ diff -rup libvirt-0.6.2.orig/src/uml_conf.c libvirt-0.6.2.new/src/uml_conf.c
  
      if ((guest = virCapabilitiesAddGuest(caps,
                                           "uml",
+-- 
+1.6.2.5
+

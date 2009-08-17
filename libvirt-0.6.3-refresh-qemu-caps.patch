@@ -1,17 +1,23 @@
-commit 0e51348cb9aeafe5e2fd6469a4bde0baa1eb8720
-Author: Cole Robinson <crobinso@redhat.com>
-Date:   Mon May 4 15:06:03 2009 -0400
+From a521796bac21f0c8af38a8551a420d87b61c7a9a Mon Sep 17 00:00:00 2001
+From: Cole Robinson <crobinso@redhat.com>
+Date: Wed, 6 May 2009 14:20:34 +0000
+Subject: [PATCH] Refresh QEMU driver capabilities for each getCapabilities call.
 
-    Refresh QEMU driver capabilities for each getCapabilities call.
-    
-    Also fix up a couple issues where caps are accessed without locking
-    the driver structure.
+Also fix up a couple issues where caps are accessed without locking
+the driver structure.
+
+(cherry picked from commit 4f107590243631869677ddea2bb667db4a1282a6)
+
+Fedora-patch: libvirt-0.6.3-refresh-qemu-caps.patch
+---
+ src/qemu_driver.c |   28 ++++++++++++++++++++--------
+ 1 files changed, 20 insertions(+), 8 deletions(-)
 
 diff --git a/src/qemu_driver.c b/src/qemu_driver.c
-index 23ea961..790dac6 100644
+index 162d072..4752a64 100644
 --- a/src/qemu_driver.c
 +++ b/src/qemu_driver.c
-@@ -1885,10 +1885,12 @@ static int qemudGetNodeInfo(virConnectPtr conn,
+@@ -1872,10 +1872,12 @@ static int qemudGetNodeInfo(virConnectPtr conn,
  
  static char *qemudGetCapabilities(virConnectPtr conn) {
      struct qemud_driver *driver = conn->privateData;
@@ -26,7 +32,7 @@ index 23ea961..790dac6 100644
          virReportOOMError(conn);
      qemuDriverUnlock(driver);
  
-@@ -3169,20 +3171,26 @@ cleanup:
+@@ -3142,20 +3144,26 @@ cleanup:
      return ret;
  }
  
@@ -57,7 +63,7 @@ index 23ea961..790dac6 100644
      }
      strcpy(secmodel->model, p);
  
-@@ -3191,10 +3199,14 @@ static int qemudNodeGetSecurityModel(virConnectPtr conn, virSecurityModelPtr sec
+@@ -3164,10 +3172,14 @@ static int qemudNodeGetSecurityModel(virConnectPtr conn, virSecurityModelPtr sec
          qemudReportError(conn, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
                           _("security DOI string exceeds max %d bytes"),
                           VIR_SECURITY_DOI_BUFLEN-1);
@@ -74,3 +80,6 @@ index 23ea961..790dac6 100644
  }
  
  /* TODO: check seclabel restore */
+-- 
+1.6.2.5
+

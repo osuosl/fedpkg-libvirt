@@ -1,15 +1,18 @@
-From 2b3fcdc378e7bec5c1a78b81632756e92930fd24 Mon Sep 17 00:00:00 2001
+From 9f6a5f50aee13575331f79f5d93635f701646eb7 Mon Sep 17 00:00:00 2001
 From: Daniel P. Berrange <berrange@redhat.com>
 Date: Mon, 11 May 2009 15:14:24 +0000
-Subject: [PATCH 1/1] Fix QEMU ARGV detection with kvm >= 85
+Subject: [PATCH] Fix QEMU ARGV detection with kvm >= 85
 
+(cherry picked from commit 426f9772b84752b4901b72fd382ff6e28e258efd)
+
+Fedora-patch: libvirt-0.6.2-fix-qemu-argv-detection-with-kvm-85.patch
 ---
  src/qemu_conf.c   |   18 ++++++++++++++----
  src/qemu_driver.c |   12 ++----------
  2 files changed, 16 insertions(+), 14 deletions(-)
 
 diff --git a/src/qemu_conf.c b/src/qemu_conf.c
-index 9cb71eb..a57d3ab 100644
+index 929fe00..3e7e32d 100644
 --- a/src/qemu_conf.c
 +++ b/src/qemu_conf.c
 @@ -431,18 +431,28 @@ int qemudExtractVersionInfo(const char *qemu,
@@ -46,10 +49,10 @@ index 9cb71eb..a57d3ab 100644
      version = (major * 1000 * 1000) + (minor * 1000) + micro;
  
 diff --git a/src/qemu_driver.c b/src/qemu_driver.c
-index 30642d5..bd60b29 100644
+index 4752a64..5ca3d20 100644
 --- a/src/qemu_driver.c
 +++ b/src/qemu_driver.c
-@@ -1391,12 +1391,8 @@ static int qemudStartVMDaemon(virConnectPtr conn,
+@@ -1379,12 +1379,8 @@ static int qemudStartVMDaemon(virConnectPtr conn,
  
      if (qemudExtractVersionInfo(emulator,
                                  NULL,
@@ -63,7 +66,7 @@ index 30642d5..bd60b29 100644
  
      if (qemuPrepareHostDevices(conn, vm->def) < 0)
          goto cleanup;
-@@ -3715,12 +3711,8 @@ static int qemudDomainChangeEjectableMedia(virConnectPtr conn,
+@@ -3606,12 +3602,8 @@ static int qemudDomainChangeEjectableMedia(virConnectPtr conn,
  
      if (qemudExtractVersionInfo(vm->def->emulator,
                                  NULL,
@@ -78,5 +81,5 @@ index 30642d5..bd60b29 100644
      if (qemuCmdFlags & QEMUD_CMD_FLAG_DRIVE) {
          if (!(devname = qemudDiskDeviceName(conn, newdisk)))
 -- 
-1.6.0.6
+1.6.2.5
 

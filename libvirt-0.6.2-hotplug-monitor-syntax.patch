@@ -1,17 +1,23 @@
-commit 326ecb78145cfeb7706ef0dcd521b19d934950e7
-Author: Daniel P. Berrange <berrange@redhat.com>
-Date:   Mon Jul 6 15:58:55 2009 +0100
+From ae80f9ec15b03d9d3ab6cfa2d48529b459a64fb2 Mon Sep 17 00:00:00 2001
+From: Daniel P. Berrange <berrange@redhat.com>
+Date: Mon, 6 Jul 2009 15:58:55 +0100
+Subject: [PATCH] Fix PCI device hotplug/unplug with newer QEMU
 
-    Fix PCI device hotplug/unplug with newer QEMU
-    
-    * src/qemu_driver.c: Try new monitor syntax for hotplug first. If
-      that fails fallback to old KVM specific syntax
+* src/qemu_driver.c: Try new monitor syntax for hotplug first. If
+  that fails fallback to old KVM specific syntax
+
+(cherry picked from commit 326ecb78145cfeb7706ef0dcd521b19d934950e7)
+
+Fedora-patch: libvirt-0.6.2-hotplug-monitor-syntax.patch
+---
+ src/qemu_driver.c |   56 +++++++++++++++++++++++++++++++++++++++-------------
+ 1 files changed, 42 insertions(+), 14 deletions(-)
 
 diff --git a/src/qemu_driver.c b/src/qemu_driver.c
-index 2e55045..5a0ab12 100644
+index f3661f8..8473616 100644
 --- a/src/qemu_driver.c
 +++ b/src/qemu_driver.c
-@@ -4004,6 +4004,7 @@ static int qemudDomainAttachPciDiskDevice(virConnectPtr conn,
+@@ -3724,6 +3724,7 @@ static int qemudDomainAttachPciDiskDevice(virConnectPtr conn,
      char *cmd, *reply, *s;
      char *safe_path;
      const char* type = virDomainDiskBusTypeToString(dev->data.disk->bus);
@@ -19,7 +25,7 @@ index 2e55045..5a0ab12 100644
  
      for (i = 0 ; i < vm->def->ndisks ; i++) {
          if (STREQ(vm->def->disks[i]->dst, dev->data.disk->dst)) {
-@@ -4018,14 +4019,15 @@ static int qemudDomainAttachPciDiskDevice(virConnectPtr conn,
+@@ -3738,14 +3739,15 @@ static int qemudDomainAttachPciDiskDevice(virConnectPtr conn,
          return -1;
      }
  
@@ -37,7 +43,7 @@ index 2e55045..5a0ab12 100644
      VIR_FREE(safe_path);
      if (ret == -1) {
          virReportOOMError(conn);
-@@ -4041,17 +4043,27 @@ static int qemudDomainAttachPciDiskDevice(virConnectPtr conn,
+@@ -3761,17 +3763,27 @@ static int qemudDomainAttachPciDiskDevice(virConnectPtr conn,
  
      DEBUG ("%s: pci_add reply: %s", vm->def->name, reply);
      /* If the command succeeds qemu prints:
@@ -71,7 +77,7 @@ index 2e55045..5a0ab12 100644
          VIR_FREE(reply);
          VIR_FREE(cmd);
          return -1;
-@@ -4268,6 +4280,7 @@ static int qemudDomainDetachPciDiskDevice(virConnectPtr conn,
+@@ -3990,6 +4002,7 @@ static int qemudDomainDetachPciDiskDevice(virConnectPtr conn,
      char *cmd = NULL;
      char *reply = NULL;
      virDomainDiskDefPtr detach = NULL;
@@ -79,7 +85,7 @@ index 2e55045..5a0ab12 100644
  
      for (i = 0 ; i < vm->def->ndisks ; i++) {
          if (STREQ(vm->def->disks[i]->dst, dev->data.disk->dst)) {
-@@ -4289,9 +4302,17 @@ static int qemudDomainDetachPciDiskDevice(virConnectPtr conn,
+@@ -4011,9 +4024,17 @@ static int qemudDomainDetachPciDiskDevice(virConnectPtr conn,
          goto cleanup;
      }
  
@@ -100,7 +106,7 @@ index 2e55045..5a0ab12 100644
      }
  
      if (qemudMonitorCommand(vm, cmd, &reply) < 0) {
-@@ -4301,12 +4322,19 @@ static int qemudDomainDetachPciDiskDevice(virConnectPtr conn,
+@@ -4023,12 +4044,19 @@ static int qemudDomainDetachPciDiskDevice(virConnectPtr conn,
      }
  
      DEBUG ("%s: pci_del reply: %s",vm->def->name,  reply);
@@ -123,3 +129,6 @@ index 2e55045..5a0ab12 100644
          goto cleanup;
      }
  
+-- 
+1.6.2.5
+

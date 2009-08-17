@@ -294,7 +294,7 @@ of recent versions of Linux (and other OSes).
 %patch22 -p1
 %patch23 -p1
 
-%patch200 -p0
+%patch200 -p1
 
 mv NEWS NEWS.old
 iconv -f ISO-8859-1 -t UTF-8 < NEWS.old > NEWS

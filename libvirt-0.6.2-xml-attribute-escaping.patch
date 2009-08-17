@@ -1,9 +1,11 @@
-From 7f7a4403860f56d5a1ad65bfd16f5bf97a971d45 Mon Sep 17 00:00:00 2001
+From a7d81a2f9e80942c9951c1d16ad69c66b9a47bbb Mon Sep 17 00:00:00 2001
 From: Daniel Veillard <veillard@redhat.com>
 Date: Wed, 13 May 2009 16:19:59 +0000
-Subject: [PATCH 1/1] * src/buf.c: avoid an XML attribute escaping bug #499791
- daniel
+Subject: [PATCH] * src/buf.c: avoid an XML attribute escaping bug #499791 daniel
 
+(cherry picked from commit 7afe94e7e236ec465d838e7d60e961975c526ab2)
+
+Fedora-patch: libvirt-0.6.2-xml-attribute-escaping.patch
 ---
  src/buf.c |   16 +++++++++++++++-
  1 files changed, 15 insertions(+), 1 deletions(-)
@@ -43,5 +45,5 @@ index cdcdac9..259175d 100644
                     (*cur == '\r')) {
              /*
 -- 
-1.6.0.6
+1.6.2.5
 

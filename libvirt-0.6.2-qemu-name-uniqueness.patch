@@ -1,7 +1,20 @@
-diff -rupN libvirt-0.6.2/src/qemu_driver.c libvirt-0.6.2.new/src/qemu_driver.c
---- libvirt-0.6.2/src/qemu_driver.c	2009-08-05 16:25:22.000000000 +0100
-+++ libvirt-0.6.2.new/src/qemu_driver.c	2009-08-05 16:27:48.000000000 +0100
-@@ -2174,22 +2174,37 @@ static virDomainPtr qemudDomainCreate(vi
+From 1f1a0ca63c5492c7d41a0cdbd452a2743f314ebc Mon Sep 17 00:00:00 2001
+From: Daniel P. Berrange <berrange@redhat.com>
+Date: Fri, 8 May 2009 10:11:14 +0000
+Subject: [PATCH] Improve name & UUID uniqueness checking in QEMU driver
+
+(cherry picked from commit 54ebbde1e18ec831ff2fddb44ec27ed5dde7874a)
+
+Fedora-patch: libvirt-0.6.2-qemu-name-uniqueness.patch
+---
+ src/qemu_driver.c |  103 ++++++++++++++++++++++++++++++++++++++++++----------
+ 1 files changed, 83 insertions(+), 20 deletions(-)
+
+diff --git a/src/qemu_driver.c b/src/qemu_driver.c
+index 8473616..dfd19c5 100644
+--- a/src/qemu_driver.c
++++ b/src/qemu_driver.c
+@@ -2174,22 +2174,37 @@ static virDomainPtr qemudDomainCreate(virConnectPtr conn, const char *xml,
      if (virSecurityDriverVerify(conn, def) < 0)
          goto cleanup;
  
@@ -52,7 +65,7 @@ diff -rupN libvirt-0.6.2/src/qemu_driver.c libvirt-0.6.2.new/src/qemu_driver.c
      }
  
      if (!(vm = virDomainAssignDef(conn,
-@@ -2368,6 +2383,11 @@ static int qemudDomainDestroy(virDomainP
+@@ -2368,6 +2383,11 @@ static int qemudDomainDestroy(virDomainPtr dom) {
                           _("no domain with matching id %d"), dom->id);
          goto cleanup;
      }
@@ -64,7 +77,7 @@ diff -rupN libvirt-0.6.2/src/qemu_driver.c libvirt-0.6.2.new/src/qemu_driver.c
  
      qemudShutdownVMDaemon(dom->conn, driver, vm);
      event = virDomainEventNewFromObj(vm,
-@@ -3272,17 +3292,36 @@ static int qemudDomainRestore(virConnect
+@@ -3272,17 +3292,36 @@ static int qemudDomainRestore(virConnectPtr conn,
          goto cleanup;
      }
  
@@ -106,7 +119,7 @@ diff -rupN libvirt-0.6.2/src/qemu_driver.c libvirt-0.6.2.new/src/qemu_driver.c
          }
      }
  
-@@ -3470,18 +3509,41 @@ static virDomainPtr qemudDomainDefine(vi
+@@ -3470,18 +3509,41 @@ static virDomainPtr qemudDomainDefine(virConnectPtr conn, const char *xml) {
      if (virSecurityDriverVerify(conn, def) < 0)
          goto cleanup;
  
@@ -150,7 +163,7 @@ diff -rupN libvirt-0.6.2/src/qemu_driver.c libvirt-0.6.2.new/src/qemu_driver.c
      vm->persistent = 1;
  
      if (virDomainSaveConfig(conn,
-@@ -3503,6 +3565,7 @@ static virDomainPtr qemudDomainDefine(vi
+@@ -3503,6 +3565,7 @@ static virDomainPtr qemudDomainDefine(virConnectPtr conn, const char *xml) {
      if (dom) dom->id = vm->def->id;
  
  cleanup:
@@ -158,3 +171,6 @@ diff -rupN libvirt-0.6.2/src/qemu_driver.c libvirt-0.6.2.new/src/qemu_driver.c
      if (vm)
          virDomainObjUnlock(vm);
      if (event)
+-- 
+1.6.2.5
+

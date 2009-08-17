@@ -1,10 +1,11 @@
-From 4db7474b0c1907e877d7206edeb4d73962971096 Mon Sep 17 00:00:00 2001
+From 6635abc3bbe54e6b0168182805de92cd70d125e4 Mon Sep 17 00:00:00 2001
 From: Daniel Veillard <veillard@redhat.com>
 Date: Tue, 12 May 2009 15:31:22 +0000
-Subject: [PATCH 1/1] * src/network_driver.c: enable bridges which are not up
-   without an IP address, patch by Ludwig Nussel
- Daniel
+Subject: [PATCH] * src/network_driver.c: enable bridges which are not up without an IP address, patch by Ludwig Nussel
 
+(cherry picked from commit e978774ec67f4b062b1f65e5c76a13193a9430eb)
+
+Fedora-patch: libvirt-0.6.2-bring-up-ipless-bridge.patch
 ---
  src/network_driver.c |    9 +++------
  1 files changed, 3 insertions(+), 6 deletions(-)
@@ -44,5 +45,5 @@ index a17a769..a163b15 100644
                   network->def->bridge, virStrerror(err, ebuf, sizeof ebuf));
      }
 -- 
-1.6.0.6
+1.6.2.5
 

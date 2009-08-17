@@ -1,17 +1,20 @@
-From: "Daniel P. Berrange" <berrange@redhat.com>
-To: libvir-list@redhat.com
-Date: Thu, 30 Apr 2009 15:09:05 +0100
-Subject: [libvirt] PATCH: Enable migration with QEMU >= 0.10.0
+From 9b41d6550b6bf8d4450bb5b86550eb605cc1fd91 Mon Sep 17 00:00:00 2001
+From: Daniel P. Berrange <berrange@redhat.com>
+Date: Fri, 8 May 2009 10:07:15 +0000
+Subject: [PATCH] Enable save/restore/migrate for QEMU >= 0.10.0
 
-The KVM migration code was added to QEMU for the 0.10.0 release, so we 
-should enable this in libvirt now.
+(cherry picked from commit 88e22e4e8cb7fc7e1fa1d132778aa1994f4b55b6)
 
-Daniel
+Fedora-patch: libvirt-0.6.2-enable-qemu-0-10-migration.patch
+---
+ src/qemu_conf.c |   10 +++++-----
+ 1 files changed, 5 insertions(+), 5 deletions(-)
 
-diff -r be7993675e07 src/qemu_conf.c
---- a/src/qemu_conf.c	Thu Apr 30 14:49:27 2009 +0100
-+++ b/src/qemu_conf.c	Thu Apr 30 15:08:45 2009 +0100
-@@ -472,16 +472,13 @@ int qemudExtractVersionInfo(const char *
+diff --git a/src/qemu_conf.c b/src/qemu_conf.c
+index 6f9e610..929fe00 100644
+--- a/src/qemu_conf.c
++++ b/src/qemu_conf.c
+@@ -472,16 +472,13 @@ int qemudExtractVersionInfo(const char *qemu,
  
      /*
       * Handling of -incoming arg with varying features
@@ -30,7 +33,7 @@ diff -r be7993675e07 src/qemu_conf.c
       */
      if (kvm_version >= 79) {
          flags |= QEMUD_CMD_FLAG_MIGRATE_QEMU_TCP;
-@@ -489,6 +486,9 @@ int qemudExtractVersionInfo(const char *
+@@ -489,6 +486,9 @@ int qemudExtractVersionInfo(const char *qemu,
              flags |= QEMUD_CMD_FLAG_MIGRATE_QEMU_EXEC;
      } else if (kvm_version > 0) {
          flags |= QEMUD_CMD_FLAG_MIGRATE_KVM_STDIO;
@@ -40,6 +43,6 @@ diff -r be7993675e07 src/qemu_conf.c
      }
  
      if (retversion)
-
-
 -- 
+1.6.2.5
+

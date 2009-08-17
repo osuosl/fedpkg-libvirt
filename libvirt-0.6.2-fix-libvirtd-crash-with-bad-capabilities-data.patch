@@ -1,15 +1,19 @@
-From 80965bff6d46dea1808c8bbf02f50f0e289a0e65 Mon Sep 17 00:00:00 2001
+From d8bd0cff27c0572e9305e7fdbc6b843f74d9e30f Mon Sep 17 00:00:00 2001
 From: Daniel P. Berrange <berrange@redhat.com>
 Date: Mon, 29 Jun 2009 10:41:56 +0000
 Subject: [PATCH] Fix crash in QEMU driver with bad capabilities data
 
+(cherry picked from commit 39c7e7a6b79bbdfa36928a430d56fa88a204e8fd)
+
+Fedora-patch: libvirt-0.6.2-fix-libvirtd-crash-with-bad-capabilities-data.patch
 ---
  src/qemu_driver.c |   80 +++++++++++++++++++++++++++++++++++-----------------
  1 files changed, 54 insertions(+), 26 deletions(-)
 
-diff -up libvirt-0.6.2/src/qemu_driver.c.bad-caps libvirt-0.6.2/src/qemu_driver.c
---- libvirt-0.6.2/src/qemu_driver.c.bad-caps	2009-07-03 10:07:03.275252815 +0100
-+++ libvirt-0.6.2/src/qemu_driver.c	2009-07-03 10:08:52.143502961 +0100
+diff --git a/src/qemu_driver.c b/src/qemu_driver.c
+index cb738b2..3d3675c 100644
+--- a/src/qemu_driver.c
++++ b/src/qemu_driver.c
 @@ -360,12 +360,43 @@ next:
      return 0;
  }
@@ -56,7 +60,7 @@ diff -up libvirt-0.6.2/src/qemu_driver.c.bad-caps libvirt-0.6.2/src/qemu_driver.
      virSecurityDriverPtr security_drv;
  
      ret = virSecurityDriverStartup(&security_drv,
-@@ -381,36 +412,17 @@ qemudSecurityInit(struct qemud_driver *q
+@@ -381,36 +412,17 @@ qemudSecurityInit(struct qemud_driver *qemud_drv)
      }
  
      qemud_drv->securityDriver = security_drv;
@@ -96,7 +100,7 @@ diff -up libvirt-0.6.2/src/qemu_driver.c.bad-caps libvirt-0.6.2/src/qemu_driver.
  
  /**
   * qemudStartup:
-@@ -1852,13 +1864,29 @@ static int qemudGetNodeInfo(virConnectPt
+@@ -1852,13 +1864,29 @@ static int qemudGetNodeInfo(virConnectPtr conn,
  
  static char *qemudGetCapabilities(virConnectPtr conn) {
      struct qemud_driver *driver = conn->privateData;
@@ -128,3 +132,6 @@ diff -up libvirt-0.6.2/src/qemu_driver.c.bad-caps libvirt-0.6.2/src/qemu_driver.
      qemuDriverUnlock(driver);
  
      return xml;
+-- 
+1.6.2.5
+
