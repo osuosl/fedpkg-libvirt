@@ -1,0 +1,38 @@
+From 0878a15ad937449b5dfc4cf49888cc7753473e33 Mon Sep 17 00:00:00 2001
+From: Daniel Veillard <veillard@redhat.com>
+Date: Fri, 26 Jun 2009 18:14:16 +0000
+Subject: [PATCH] Fix xen driver segfault with newer Xen
+
+https://bugzilla.redhat.com/518091
+
+(cherry picked from commit 14435163a086c0bcdff04308077fa46a5fa08bb0)
+
+Fedora-patch: libvirt-fix-xen-driver-segfault-with-newer-xen.patch
+---
+ src/xend_internal.c |   10 +++++++++-
+ 1 files changed, 9 insertions(+), 1 deletions(-)
+
+diff --git a/src/xend_internal.c b/src/xend_internal.c
+index 2e2fd21..c3a9836 100644
+--- a/src/xend_internal.c
++++ b/src/xend_internal.c
+@@ -2077,7 +2077,15 @@ xenDaemonParseSxprGraphicsNew(virConnectPtr conn,
+         if (sexpr_lookup(node, "device/vfb")) {
+             /* New style graphics config for PV guests in >= 3.0.4,
+              * or for HVM guests in >= 3.0.5 */
+-            tmp = sexpr_node(node, "device/vfb/type");
++            if (sexpr_node(node, "device/vfb/type")) {
++                tmp = sexpr_node(node, "device/vfb/type");
++            } else if (sexpr_node(node, "device/vfb/vnc")) {
++                tmp = "vnc";
++            } else if (sexpr_node(node, "device/vfb/sdl")) {
++                tmp = "sdl";
++            } else {
++                tmp = "unknown";
++            }
+ 
+             if (VIR_ALLOC(graphics) < 0)
+                 goto no_memory;
+-- 
+1.6.2.5
+

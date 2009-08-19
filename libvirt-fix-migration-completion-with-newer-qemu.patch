@@ -1,0 +1,45 @@
+From 21ef933dfdd64c754d184d41d87ecd94eaddf697 Mon Sep 17 00:00:00 2001
+From: Chris Lalancette <clalance@redhat.com>
+Date: Wed, 5 Aug 2009 13:42:07 +0200
+Subject: [PATCH] Run 'cont' on successful migration finish.
+
+https://bugzilla.redhat.com/516187
+
+As of qemu 0.10.6, qemu now honors the -S flag on incoming migration.
+That means that when the migration completes, we have to issue a
+'cont' command to get the VM running again.  We do it unconditionally
+since it won't hurt on older qemu.
+
+(cherry picked from commit d1ec4d7a5a4f50c9492137eaab4f021caa075f95)
+
+Fedora-patch: libvirt-fix-migration-completion-with-newer-qemu.patch
+---
+ src/qemu_driver.c |   11 +++++++++++
+ 1 files changed, 11 insertions(+), 0 deletions(-)
+
+diff --git a/src/qemu_driver.c b/src/qemu_driver.c
+index 7dbf4a2..ff56f61 100644
+--- a/src/qemu_driver.c
++++ b/src/qemu_driver.c
+@@ -5162,7 +5162,18 @@ qemudDomainMigrateFinish2 (virConnectPtr dconn,
+      */
+     if (retcode == 0) {
+         dom = virGetDomain (dconn, vm->def->name, vm->def->uuid);
++
++        /* run 'cont' on the destination, which allows migration on qemu
++         * >= 0.10.6 to work properly.  This isn't strictly necessary on
++         * older qemu's, but it also doesn't hurt anything there
++         */
++        if (qemudMonitorCommand(vm, "cont", &info) < 0) {
++            qemudReportError(dconn, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
++                             "%s", _("resume operation failed"));
++            goto cleanup;
++        }
+         VIR_FREE(info);
++
+         vm->state = VIR_DOMAIN_RUNNING;
+         event = virDomainEventNewFromObj(vm,
+                                          VIR_DOMAIN_EVENT_RESUMED,
+-- 
+1.6.2.5
+

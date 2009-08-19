@@ -66,7 +66,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.6.2
-Release: 16%{?dist}%{?extra_release}
+Release: 17%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: libvirt-%{version}.tar.gz
@@ -130,6 +130,10 @@ Patch27: libvirt-allow-pm-reset-on-multi-function-pci-devices.patch
 Patch28: libvirt-improve-pci-hostdev-reset-error-message.patch
 # Allow PCI bus reset to reset other devices (#499678)
 Patch29: libvirt-allow-pci-hostdev-reset-to-reset-other-devices.patch
+# Fix migration completion with newer versions of qemu (#516187)
+Patch30: libvirt-fix-migration-completion-with-newer-qemu.patch
+# Fix dumpxml segfault with newer versions of Xen (#518091)
+Patch31: libvirt-fix-xen-driver-segfault-with-newer-xen.patch
 
 # Not for upstream. Temporary hack till PulseAudio autostart
 # problems are sorted out when SELinux enforcing
@@ -311,6 +315,8 @@ of recent versions of Linux (and other OSes).
 %patch27 -p1
 %patch28 -p1
 %patch29 -p1
+%patch30 -p1
+%patch31 -p1
 
 %patch200 -p1
 
@@ -634,6 +640,10 @@ fi
 %endif
 
 %changelog
+* Wed Aug 19 2009 Mark McLoughlin <markmc@redhat.com> - 0.6.2-17
+- Fix migration completion with newer versions of qemu (#516187)
+- Fix dumpxml segfault with newer versions of Xen (#518091)
+
 * Wed Aug 19 2009 Mark McLoughlin <markmc@redhat.com> - 0.6.2-16.fc11
 - Allow PCI bus reset to reset other devices (#499678)
 - Fix stupid PCI reset error message (bug #499678)
