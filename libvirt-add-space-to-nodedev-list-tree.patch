@@ -1,0 +1,60 @@
+From b77d11b221862343d304e11ed878e2f176101f24 Mon Sep 17 00:00:00 2001
+From: Daniel P. Berrange <berrange@redhat.com>
+Date: Tue, 28 Apr 2009 10:55:45 +0000
+Subject: [PATCH] Cosmetic change to 'virsh nodedev-list --tree' output
+
+Maybe it's just me, but I try to select an item from the tree using
+double-click and get annoyed when "+-" gets included in the selection.
+
+* src/virsh.c: add a space between "+-" and the node device name
+  in 'virsh nodedev-list --tree'
+
+(cherry picked from commit cb4a6614fae48d05f09b7b15328ea6ef4071ccb3)
+(cherry picked from commit 097c818bf00b3777778ffc32fea3a6ed1e741e2b)
+
+Fedora-patch: libvirt-add-space-to-nodedev-list-tree.patch
+---
+ src/virsh.c |   10 ++++++----
+ 1 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/src/virsh.c b/src/virsh.c
+index 26764a7..c92bb8f 100644
+--- a/src/virsh.c
++++ b/src/virsh.c
+@@ -4460,10 +4460,12 @@ cmdNodeListDevicesPrint(vshControl *ctl,
+     if (depth && depth < MAX_DEPTH) {
+         indentBuf[indentIdx] = '+';
+         indentBuf[indentIdx+1] = '-';
++        indentBuf[indentIdx+2] = ' ';
++        indentBuf[indentIdx+3] = '\0';
+     }
+ 
+     /* Print this device */
+-    vshPrint(ctl, indentBuf);
++    vshPrint(ctl, "%s", indentBuf);
+     vshPrint(ctl, "%s\n", devices[devid]);
+ 
+ 
+@@ -4487,8 +4489,8 @@ cmdNodeListDevicesPrint(vshControl *ctl,
+ 
+     /* If there is a child device, then print another blank line */
+     if (nextlastdev != -1) {
+-        vshPrint(ctl, indentBuf);
+-        vshPrint(ctl, "  |\n");
++        vshPrint(ctl, "%s", indentBuf);
++        vshPrint(ctl, " |\n");
+     }
+ 
+     /* Finally print all children */
+@@ -4511,7 +4513,7 @@ cmdNodeListDevicesPrint(vshControl *ctl,
+     /* If there was no child device, and we're the last in
+      * a list of devices, then print another blank line */
+     if (nextlastdev == -1 && devid == lastdev) {
+-        vshPrint(ctl, indentBuf);
++        vshPrint(ctl, "%s", indentBuf);
+         vshPrint(ctl, "\n");
+     }
+ }
+-- 
+1.6.2.5
+

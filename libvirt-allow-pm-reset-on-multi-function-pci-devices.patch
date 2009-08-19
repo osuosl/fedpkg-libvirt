@@ -1,0 +1,121 @@
+From d79f35fbd4eaf610972621b042993d00f3247d5c Mon Sep 17 00:00:00 2001
+From: Mark McLoughlin <markmc@redhat.com>
+Date: Fri, 14 Aug 2009 08:31:11 +0100
+Subject: [PATCH] Allow PM reset on multi-function PCI devices
+
+https://bugzilla.redhat.com/515689
+
+It turns out that a PCI Power Management reset only affects individual
+functions, and not the whole device.
+
+The PCI Power Management spec talks about resetting the 'device' rather
+than the 'function', but Intel's Dexuan Cui informs me that it is
+actually a per-function reset.
+
+Also, Yu Zhao has added pci_pm_reset() to the kernel, and it doesn't
+reject multi-function devices, so it must be true! :-)
+
+(A side issue is that we could defer the PM reset to the kernel if we
+could detect that the kernel has PM reset support, but barring version
+number checks we don't have a way to detect that support)
+
+* src/pci.c: remove the pciDeviceContainsOtherFunctions() check from
+  pciTryPowerManagementReset() and prefer PM reset over bus reset
+  where both are available
+
+Cc: Cui, Dexuan <dexuan.cui@intel.com>
+Cc: Yu Zhao <yu.zhao@intel.com>
+
+(cherry picked from commit 64a6682b93a2a8aa38067a43979c9eaf993d2b41)
+
+Fedora-patch: libvirt-allow-pm-reset-on-multi-function-pci-devices.patch
+---
+ src/pci.c |   48 +++++++++---------------------------------------
+ 1 files changed, 9 insertions(+), 39 deletions(-)
+
+diff --git a/src/pci.c b/src/pci.c
+index 68a380d..f78ab9f 100644
+--- a/src/pci.c
++++ b/src/pci.c
+@@ -397,29 +397,6 @@ pciBusContainsOtherDevices(virConnectPtr conn, pciDevice *dev)
+     return 1;
+ }
+ 
+-/* Any other functions on this device ? */
+-static int
+-pciSharesDevice(pciDevice *a, pciDevice *b)
+-{
+-    return
+-        a->domain == b->domain &&
+-        a->bus == b->bus &&
+-        a->slot == b->slot &&
+-        a->function != b->function;
+-}
+-
+-static int
+-pciDeviceContainsOtherFunctions(virConnectPtr conn, pciDevice *dev)
+-{
+-    pciDevice *matched = NULL;
+-    if (pciIterDevices(conn, pciSharesDevice, dev, &matched) < 0)
+-        return 1;
+-    if (!matched)
+-        return 0;
+-    pciFreeDevice(conn, matched);
+-    return 1;
+-}
+-
+ /* Is @a the parent of @b ? */
+ static int
+ pciIsParent(pciDevice *a, pciDevice *b)
+@@ -524,7 +501,7 @@ out:
+  * above we require the device supports a full internal reset.
+  */
+ static int
+-pciTryPowerManagementReset(virConnectPtr conn, pciDevice *dev)
++pciTryPowerManagementReset(virConnectPtr conn ATTRIBUTE_UNUSED, pciDevice *dev)
+ {
+     uint8_t config_space[PCI_CONF_LEN];
+     uint32_t ctl;
+@@ -532,16 +509,6 @@ pciTryPowerManagementReset(virConnectPtr conn, pciDevice *dev)
+     if (!dev->pci_pm_cap_pos)
+         return -1;
+ 
+-    /* For now, we just refuse to do a power management reset
+-     * if there are other functions on this device.
+-     * In future, we could allow it so long as those functions
+-     * are not in use by the host or other guests.
+-     */
+-    if (pciDeviceContainsOtherFunctions(conn, dev)) {
+-        VIR_WARN("%s contains other functions, not resetting", dev->name);
+-        return -1;
+-    }
+-
+     /* Save and restore the device's config space. */
+     if (pciRead(dev, 0, &config_space[0], PCI_CONF_LEN) < 0) {
+         VIR_WARN("Failed to save PCI config space for %s", dev->name);
+@@ -599,14 +566,17 @@ pciResetDevice(virConnectPtr conn, pciDevice *dev)
+     if (dev->has_flr)
+         return 0;
+ 
++    /* If the device supports PCI power management reset,
++     * that's the next best thing because it only resets
++     * the function, not the whole device.
++     */
++    if (dev->has_pm_reset)
++        ret = pciTryPowerManagementReset(conn, dev);
++
+     /* Bus reset is not an option with the root bus */
+-    if (dev->bus != 0)
++    if (ret < 0 && dev->bus != 0)
+         ret = pciTrySecondaryBusReset(conn, dev);
+ 
+-    /* Next best option is a PCI power management reset */
+-    if (ret < 0 && dev->has_pm_reset)
+-        ret = pciTryPowerManagementReset(conn, dev);
+-
+     if (ret < 0)
+         pciReportError(conn, VIR_ERR_NO_SUPPORT,
+                        _("No PCI reset capability available for %s"),
+-- 
+1.6.2.5
+

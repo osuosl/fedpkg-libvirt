@@ -1,0 +1,31 @@
+From 1319852c443c432d44a2e73508f3be742027f780 Mon Sep 17 00:00:00 2001
+From: Mark McLoughlin <markmc@redhat.com>
+Date: Wed, 19 Aug 2009 11:28:02 +0100
+Subject: [PATCH] Don't overwrite error in qemudWaitForMonitor()
+
+May help diagnose https://bugzilla.redhat.com/515054
+
+Fedora-patch: libvirt-do-not-overwrite-error-in-wait-for-monitor.patch
+---
+ src/qemu_driver.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/src/qemu_driver.c b/src/qemu_driver.c
+index dfd19c5..74e106a 100644
+--- a/src/qemu_driver.c
++++ b/src/qemu_driver.c
+@@ -985,8 +985,9 @@ static int qemudWaitForMonitor(virConnectPtr conn,
+         return 0;
+ 
+     /* Unexpected end of file - inform user of QEMU log data */
+-    qemudReportError(conn, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
+-                     _("unable to start guest: %s"), buf);
++    if (!virGetLastError())
++        qemudReportError(conn, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
++                         _("unable to start guest: %s"), buf);
+     return -1;
+ }
+ 
+-- 
+1.6.2.5
+

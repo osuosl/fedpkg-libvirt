@@ -1,0 +1,812 @@
+From 6878a049e27f2eaea7bd3d5c266a2d2b39e444f1 Mon Sep 17 00:00:00 2001
+From: Mark McLoughlin <markmc@redhat.com>
+Date: Mon, 17 Aug 2009 15:05:23 +0100
+Subject: [PATCH] Maintain a list of active PCI hostdevs and use it in pciResetDevice()
+
+https://bugzilla.redhat.com/499678
+
+First we add a pciDeviceList type and add a qemuGetPciHostDeviceList()
+function to build a list from a domain definition. Use this in
+prepare/re-attach to simplify things and eliminate the multiple
+pciGetDevice() calls.
+
+Then, as we start/shutdown guests we can add or delete devices as
+appropriate from a list of active devices.
+
+Finally, in pciReset(), we can use this to determine whether its safe to
+reset a device as a side effect of resetting another device.
+
+(cherry picked from commit 78675b228b76a83f83d64856bfb63b9e14c103a0)
+(cherry picked from commit e8ad33931296c67de0538e78d12e21706a826d37)
+
+Fedora-patch: libvirt-allow-pci-hostdev-reset-to-reset-other-devices.patch
+---
+ src/libvirt_private.syms |    7 +-
+ src/pci.c                |  211 +++++++++++++++++++++++++++++++++--------
+ src/pci.h                |   23 +++++-
+ src/qemu_conf.h          |    3 +
+ src/qemu_driver.c        |  237 +++++++++++++++++++++++++++-------------------
+ src/xen_unified.c        |    2 +-
+ 6 files changed, 339 insertions(+), 144 deletions(-)
+
+diff --git a/src/libvirt_private.syms b/src/libvirt_private.syms
+index 9249a1a..75ddda8 100644
+--- a/src/libvirt_private.syms
++++ b/src/libvirt_private.syms
+@@ -240,7 +240,12 @@ pciFreeDevice;
+ pciDettachDevice;
+ pciReAttachDevice;
+ pciResetDevice;
+-
++pciDeviceSetManaged;
++pciDeviceGetManaged;
++pciDeviceListNew;
++pciDeviceListFree;
++pciDeviceListAdd;
++pciDeviceListDel;
+ 
+ # qparams.h
+ qparam_get_query;
+diff --git a/src/pci.c b/src/pci.c
+index 1dddb08..1e68261 100644
+--- a/src/pci.c
++++ b/src/pci.c
+@@ -58,6 +58,7 @@ struct _pciDevice {
+     unsigned      pci_pm_cap_pos;
+     unsigned      has_flr : 1;
+     unsigned      has_pm_reset : 1;
++    unsigned      managed : 1;
+ };
+ 
+ /* For virReportOOMError()  and virReportSystemError() */
+@@ -220,7 +221,7 @@ pciWrite32(pciDevice *dev, unsigned pos, uint32_t val)
+     pciWrite(dev, pos, &buf[0], sizeof(buf));
+ }
+ 
+-typedef int (*pciIterPredicate)(pciDevice *, pciDevice *);
++typedef int (*pciIterPredicate)(pciDevice *, pciDevice *, void *);
+ 
+ /* Iterate over available PCI devices calling @predicate
+  * to compare each one to @dev.
+@@ -231,7 +232,8 @@ static int
+ pciIterDevices(virConnectPtr conn,
+                pciIterPredicate predicate,
+                pciDevice *dev,
+-               pciDevice **matched)
++               pciDevice **matched,
++               void *data)
+ {
+     DIR *dir;
+     struct dirent *entry;
+@@ -249,7 +251,7 @@ pciIterDevices(virConnectPtr conn,
+ 
+     while ((entry = readdir(dir))) {
+         unsigned domain, bus, slot, function;
+-        pciDevice *try;
++        pciDevice *check;
+ 
+         /* Ignore '.' and '..' */
+         if (entry->d_name[0] == '.')
+@@ -261,18 +263,18 @@ pciIterDevices(virConnectPtr conn,
+             continue;
+         }
+ 
+-        try = pciGetDevice(conn, domain, bus, slot, function);
+-        if (!try) {
++        check = pciGetDevice(conn, domain, bus, slot, function);
++        if (!check) {
+             ret = -1;
+             break;
+         }
+ 
+-        if (predicate(try, dev)) {
+-            VIR_DEBUG("%s %s: iter matched on %s", dev->id, dev->name, try->name);
+-            *matched = try;
++        if (predicate(dev, check, data)) {
++            VIR_DEBUG("%s %s: iter matched on %s", dev->id, dev->name, check->name);
++            *matched = check;
+             break;
+         }
+-        pciFreeDevice(conn, try);
++        pciFreeDevice(conn, check);
+     }
+     closedir(dir);
+     return ret;
+@@ -374,63 +376,70 @@ pciDetectPowerManagementReset(pciDevice *dev)
+     return 0;
+ }
+ 
+-/* Any devices other than the one supplied on the same domain/bus ? */
++/* Any active devices other than the one supplied on the same domain/bus ? */
+ static int
+-pciSharesBus(pciDevice *a, pciDevice *b)
++pciSharesBusWithActive(pciDevice *dev, pciDevice *check, void *data)
+ {
+-    return
+-        a->domain == b->domain &&
+-        a->bus == b->bus &&
+-        (a->slot != b->slot ||
+-         a->function != b->function);
+-}
++    pciDeviceList *activeDevs = data;
+ 
+-static int
+-pciBusContainsOtherDevices(virConnectPtr conn, pciDevice *dev)
+-{
+-    pciDevice *matched = NULL;
+-    if (pciIterDevices(conn, pciSharesBus, dev, &matched) < 0)
+-        return 1;
+-    if (!matched)
++    if (dev->domain != check->domain ||
++        dev->bus != check->bus ||
++        (check->slot == check->slot &&
++         check->function == check->function))
++        return 0;
++
++    if (activeDevs && !pciDeviceListFind(activeDevs, check))
+         return 0;
+-    pciFreeDevice(conn, matched);
++
+     return 1;
+ }
+ 
+-/* Is @a the parent of @b ? */
++static pciDevice *
++pciBusContainsActiveDevices(virConnectPtr conn,
++                            pciDevice *dev,
++                            pciDeviceList *activeDevs)
++{
++    pciDevice *active = NULL;
++    if (pciIterDevices(conn, pciSharesBusWithActive,
++                       dev, &active, activeDevs) < 0)
++        return NULL;
++    return active;
++}
++
++/* Is @check the parent of @dev ? */
+ static int
+-pciIsParent(pciDevice *a, pciDevice *b)
++pciIsParent(pciDevice *dev, pciDevice *check, void *data ATTRIBUTE_UNUSED)
+ {
+     uint16_t device_class;
+     uint8_t header_type, secondary, subordinate;
+ 
+-    if (a->domain != b->domain)
++    if (dev->domain != check->domain)
+         return 0;
+ 
+     /* Is it a bridge? */
+-    device_class = pciRead16(a, PCI_CLASS_DEVICE);
++    device_class = pciRead16(check, PCI_CLASS_DEVICE);
+     if (device_class != PCI_CLASS_BRIDGE_PCI)
+         return 0;
+ 
+     /* Is it a plane? */
+-    header_type = pciRead8(a, PCI_HEADER_TYPE);
++    header_type = pciRead8(check, PCI_HEADER_TYPE);
+     if ((header_type & PCI_HEADER_TYPE_MASK) != PCI_HEADER_TYPE_BRIDGE)
+         return 0;
+ 
+-    secondary   = pciRead8(a, PCI_SECONDARY_BUS);
+-    subordinate = pciRead8(a, PCI_SUBORDINATE_BUS);
++    secondary   = pciRead8(check, PCI_SECONDARY_BUS);
++    subordinate = pciRead8(check, PCI_SUBORDINATE_BUS);
+ 
+-    VIR_DEBUG("%s %s: found parent device %s\n", b->id, b->name, a->name);
++    VIR_DEBUG("%s %s: found parent device %s\n", dev->id, dev->name, check->name);
+ 
+     /* No, it's superman! */
+-    return (b->bus >= secondary && b->bus <= subordinate);
++    return (dev->bus >= secondary && dev->bus <= subordinate);
+ }
+ 
+ static pciDevice *
+ pciGetParentDevice(virConnectPtr conn, pciDevice *dev)
+ {
+     pciDevice *parent = NULL;
+-    pciIterDevices(conn, pciIsParent, dev, &parent);
++    pciIterDevices(conn, pciIsParent, dev, &parent, NULL);
+     return parent;
+ }
+ 
+@@ -438,9 +447,11 @@ pciGetParentDevice(virConnectPtr conn, pciDevice *dev)
+  * devices behind a bus.
+  */
+ static int
+-pciTrySecondaryBusReset(virConnectPtr conn, pciDevice *dev)
++pciTrySecondaryBusReset(virConnectPtr conn,
++                        pciDevice *dev,
++                        pciDeviceList *activeDevs)
+ {
+-    pciDevice *parent;
++    pciDevice *parent, *conflict;
+     uint8_t config_space[PCI_CONF_LEN];
+     uint16_t ctl;
+     int ret = -1;
+@@ -450,10 +461,10 @@ pciTrySecondaryBusReset(virConnectPtr conn, pciDevice *dev)
+      * In future, we could allow it so long as those devices
+      * are not in use by the host or other guests.
+      */
+-    if (pciBusContainsOtherDevices(conn, dev)) {
++    if ((conflict = pciBusContainsActiveDevices(conn, dev, activeDevs))) {
+         pciReportError(conn, VIR_ERR_NO_SUPPORT,
+-                       _("Other devices on bus with %s, not doing bus reset"),
+-                       dev->name);
++                       _("Active %s devices on bus with %s, not doing bus reset"),
++                       conflict->name, dev->name);
+         return -1;
+     }
+ 
+@@ -567,10 +578,18 @@ pciInitDevice(virConnectPtr conn, pciDevice *dev)
+ }
+ 
+ int
+-pciResetDevice(virConnectPtr conn, pciDevice *dev)
++pciResetDevice(virConnectPtr conn,
++               pciDevice *dev,
++               pciDeviceList *activeDevs)
+ {
+     int ret = -1;
+ 
++    if (activeDevs && pciDeviceListFind(activeDevs, dev)) {
++        pciReportError(conn, VIR_ERR_INTERNAL_ERROR,
++                       _("Not resetting active device %s"), dev->name);
++        return -1;
++    }
++
+     if (!dev->initted && pciInitDevice(conn, dev) < 0)
+         return -1;
+ 
+@@ -589,7 +608,7 @@ pciResetDevice(virConnectPtr conn, pciDevice *dev)
+ 
+     /* Bus reset is not an option with the root bus */
+     if (ret < 0 && dev->bus != 0)
+-        ret = pciTrySecondaryBusReset(conn, dev);
++        ret = pciTrySecondaryBusReset(conn, dev, activeDevs);
+ 
+     if (ret < 0) {
+         virErrorPtr err = virGetLastError();
+@@ -885,8 +904,116 @@ pciGetDevice(virConnectPtr conn,
+ void
+ pciFreeDevice(virConnectPtr conn ATTRIBUTE_UNUSED, pciDevice *dev)
+ {
++    if (!dev)
++        return;
+     VIR_DEBUG("%s %s: freeing", dev->id, dev->name);
+     if (dev->fd >= 0)
+         close(dev->fd);
+     VIR_FREE(dev);
+ }
++
++void pciDeviceSetManaged(pciDevice *dev, unsigned managed)
++{
++    dev->managed = !!managed;
++}
++
++unsigned pciDeviceGetManaged(pciDevice *dev)
++{
++    return dev->managed;
++}
++
++pciDeviceList *
++pciDeviceListNew(virConnectPtr conn)
++{
++    pciDeviceList *list;
++
++    if (VIR_ALLOC(list) < 0) {
++        virReportOOMError(conn);
++        return NULL;
++    }
++
++    return list;
++}
++
++void
++pciDeviceListFree(virConnectPtr conn,
++                  pciDeviceList *list)
++{
++    int i;
++
++    if (!list)
++        return;
++
++    for (i = 0; i < list->count; i++) {
++        pciFreeDevice(conn, list->devs[i]);
++        list->devs[i] = NULL;
++    }
++
++    list->count = 0;
++    VIR_FREE(list->devs);
++    VIR_FREE(list);
++}
++
++int
++pciDeviceListAdd(virConnectPtr conn,
++                 pciDeviceList *list,
++                 pciDevice *dev)
++{
++    if (pciDeviceListFind(list, dev)) {
++        pciReportError(conn, VIR_ERR_INTERNAL_ERROR,
++                       _("Device %s is already in use"), dev->name);
++        return -1;
++    }
++
++    if (VIR_REALLOC_N(list->devs, list->count+1) < 0) {
++        virReportOOMError(conn);
++        return -1;
++    }
++
++    list->devs[list->count++] = dev;
++
++    return 0;
++}
++
++void
++pciDeviceListDel(virConnectPtr conn ATTRIBUTE_UNUSED,
++                 pciDeviceList *list,
++                 pciDevice *dev)
++{
++    int i;
++
++    for (i = 0; i < list->count; i++) {
++        if (list->devs[i]->domain   != dev->domain ||
++            list->devs[i]->bus      != dev->bus    ||
++            list->devs[i]->slot     != dev->slot   ||
++            list->devs[i]->function != dev->function)
++            continue;
++
++        pciFreeDevice(conn, list->devs[i]);
++
++        if (i != --list->count)
++            memmove(&list->devs[i],
++                    &list->devs[i+1],
++                    sizeof(*list->devs) * (list->count-i));
++
++        if (VIR_REALLOC_N(list->devs, list->count) < 0) {
++            ; /* not fatal */
++        }
++
++        break;
++    }
++}
++
++pciDevice *
++pciDeviceListFind(pciDeviceList *list, pciDevice *dev)
++{
++    int i;
++
++    for (i = 0; i < list->count; i++)
++        if (list->devs[i]->domain   == dev->domain &&
++            list->devs[i]->bus      == dev->bus    &&
++            list->devs[i]->slot     == dev->slot   &&
++            list->devs[i]->function == dev->function)
++            return list->devs[i];
++    return NULL;
++}
+diff --git a/src/pci.h b/src/pci.h
+index 47882ef..685b0af 100644
+--- a/src/pci.h
++++ b/src/pci.h
+@@ -27,6 +27,11 @@
+ 
+ typedef struct _pciDevice pciDevice;
+ 
++typedef struct {
++    unsigned count;
++    pciDevice **devs;
++} pciDeviceList;
++
+ pciDevice *pciGetDevice      (virConnectPtr  conn,
+                               unsigned       domain,
+                               unsigned       bus,
+@@ -39,6 +44,22 @@ int        pciDettachDevice  (virConnectPtr  conn,
+ int        pciReAttachDevice (virConnectPtr  conn,
+                               pciDevice     *dev);
+ int        pciResetDevice    (virConnectPtr  conn,
+-                              pciDevice     *dev);
++                              pciDevice     *dev,
++                              pciDeviceList *activeDevs);
++void      pciDeviceSetManaged(pciDevice     *dev,
++                              unsigned       managed);
++unsigned  pciDeviceGetManaged(pciDevice     *dev);
++
++pciDeviceList *pciDeviceListNew  (virConnectPtr conn);
++void           pciDeviceListFree (virConnectPtr conn,
++                                  pciDeviceList *list);
++int            pciDeviceListAdd  (virConnectPtr conn,
++                                  pciDeviceList *list,
++                                  pciDevice *dev);
++void           pciDeviceListDel  (virConnectPtr conn,
++                                  pciDeviceList *list,
++                                  pciDevice *dev);
++pciDevice *    pciDeviceListFind (pciDeviceList *list,
++                                  pciDevice *dev);
+ 
+ #endif /* __VIR_PCI_H__ */
+diff --git a/src/qemu_conf.h b/src/qemu_conf.h
+index 70fe9c8..cde326d 100644
+--- a/src/qemu_conf.h
++++ b/src/qemu_conf.h
+@@ -34,6 +34,7 @@
+ #include "domain_event.h"
+ #include "threads.h"
+ #include "security.h"
++#include "pci.h"
+ 
+ #define qemudDebug(fmt, ...) do {} while(0)
+ 
+@@ -90,6 +91,8 @@ struct qemud_driver {
+ 
+     char *securityDriverName;
+     virSecurityDriverPtr securityDriver;
++
++    pciDeviceList *activePciHostdevs;
+ };
+ 
+ /* Status needed to reconenct to running VMs */
+diff --git a/src/qemu_driver.c b/src/qemu_driver.c
+index 9f87d2a..7dbf4a2 100644
+--- a/src/qemu_driver.c
++++ b/src/qemu_driver.c
+@@ -126,6 +126,9 @@ static int qemudDomainSetMemoryBalloon(virConnectPtr conn,
+                                        virDomainObjPtr vm,
+                                        unsigned long newmem);
+ 
++static int qemuUpdateActivePciHostdevs(struct qemud_driver *driver,
++                                       virDomainDefPtr def);
++
+ static struct qemud_driver *qemu_driver = NULL;
+ 
+ 
+@@ -334,6 +337,10 @@ qemudReconnectVMs(struct qemud_driver *driver)
+         if ((vm->logfile = qemudLogFD(NULL, driver->logDir, vm->def->name)) < 0)
+             goto next_error;
+ 
++        if (qemuUpdateActivePciHostdevs(driver, vm->def) < 0) {
++            goto next_error;
++        }
++
+         if (vm->def->id >= driver->nextvmid)
+             driver->nextvmid = vm->def->id + 1;
+ 
+@@ -515,6 +522,9 @@ qemudStartup(void) {
+     if ((qemu_driver->caps = qemudCapsInit()) == NULL)
+         goto out_of_memory;
+ 
++    if ((qemu_driver->activePciHostdevs = pciDeviceListNew(NULL)) == NULL)
++        goto error;
++
+     if (qemudLoadDriverConfig(qemu_driver, driverConf) < 0) {
+         goto error;
+     }
+@@ -627,6 +637,7 @@ qemudShutdown(void) {
+         return -1;
+ 
+     qemuDriverLock(qemu_driver);
++    pciDeviceListFree(NULL, qemu_driver->activePciHostdevs);
+     virCapabilitiesFree(qemu_driver->caps);
+ 
+     virDomainObjListFree(&qemu_driver->domains);
+@@ -1209,48 +1220,16 @@ static int qemudNextFreeVNCPort(struct qemud_driver *driver ATTRIBUTE_UNUSED) {
+     return -1;
+ }
+ 
+-static int qemuPrepareHostDevices(virConnectPtr conn,
+-                                  virDomainDefPtr def) {
++static pciDeviceList *
++qemuGetPciHostDeviceList(virConnectPtr conn,
++                         virDomainDefPtr def)
++{
++    pciDeviceList *list;
+     int i;
+ 
+-    /* We have to use 2 loops here. *All* devices must
+-     * be detached before we reset any of them, because
+-     * in some cases you have to reset the whole PCI,
+-     * which impacts all devices on it
+-     */
+-
+-    for (i = 0 ; i < def->nhostdevs ; i++) {
+-        virDomainHostdevDefPtr hostdev = def->hostdevs[i];
+-
+-        if (hostdev->mode != VIR_DOMAIN_HOSTDEV_MODE_SUBSYS)
+-            continue;
+-        if (hostdev->source.subsys.type != VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI)
+-            continue;
+-
+-        if (hostdev->managed) {
+-            pciDevice *dev = pciGetDevice(conn,
+-                                          hostdev->source.subsys.u.pci.domain,
+-                                          hostdev->source.subsys.u.pci.bus,
+-                                          hostdev->source.subsys.u.pci.slot,
+-                                          hostdev->source.subsys.u.pci.function);
+-            if (!dev)
+-                goto error;
+-
+-            if (pciDettachDevice(conn, dev) < 0) {
+-                pciFreeDevice(conn, dev);
+-                goto error;
+-            }
+-
+-            pciFreeDevice(conn, dev);
+-        } /* else {
+-             XXX validate that non-managed device isn't in use, eg
+-             by checking that device is either un-bound, or bound
+-             to pci-stub.ko
+-        } */
+-    }
++    if (!(list = pciDeviceListNew(conn)))
++        return NULL;
+ 
+-    /* Now that all the PCI hostdevs have be dettached, we can safely
+-     * reset them */
+     for (i = 0 ; i < def->nhostdevs ; i++) {
+         virDomainHostdevDefPtr hostdev = def->hostdevs[i];
+         pciDevice *dev;
+@@ -1265,95 +1244,151 @@ static int qemuPrepareHostDevices(virConnectPtr conn,
+                            hostdev->source.subsys.u.pci.bus,
+                            hostdev->source.subsys.u.pci.slot,
+                            hostdev->source.subsys.u.pci.function);
+-        if (!dev)
+-            goto error;
++        if (!dev) {
++            pciDeviceListFree(conn, list);
++            return NULL;
++        }
+ 
+-        if (pciResetDevice(conn, dev) < 0) {
++        if (pciDeviceListAdd(conn, list, dev) < 0) {
+             pciFreeDevice(conn, dev);
+-            goto error;
++            pciDeviceListFree(conn, list);
++            return NULL;
+         }
+ 
+-        pciFreeDevice(conn, dev);
++        pciDeviceSetManaged(dev, hostdev->managed);
+     }
+ 
+-    return 0;
++    return list;
++}
+ 
+-error:
+-    return -1;
++static int
++qemuUpdateActivePciHostdevs(struct qemud_driver *driver,
++                            virDomainDefPtr def)
++{
++    pciDeviceList *pcidevs;
++    int i, ret;
++
++    if (!def->nhostdevs)
++        return 0;
++
++    if (!(pcidevs = qemuGetPciHostDeviceList(NULL, def)))
++        return -1;
++
++    ret = 0;
++
++    for (i = 0; i < pcidevs->count; i++) {
++        if (pciDeviceListAdd(NULL,
++                             driver->activePciHostdevs,
++                             pcidevs->devs[i]) < 0) {
++            ret = -1;
++            break;
++        }
++        pcidevs->devs[i] = NULL;
++    }
++
++    pciDeviceListFree(NULL, pcidevs);
++    return ret;
+ }
+ 
+-static void
+-qemuDomainReAttachHostDevices(virConnectPtr conn, virDomainDefPtr def)
++static int
++qemuPrepareHostDevices(virConnectPtr conn,
++                       struct qemud_driver *driver,
++                       virDomainDefPtr def)
+ {
++    pciDeviceList *pcidevs;
+     int i;
+ 
+-    /* Again 2 loops; reset all the devices before re-attach */
++    if (!def->nhostdevs)
++        return 0;
+ 
+-    for (i = 0 ; i < def->nhostdevs ; i++) {
+-        virDomainHostdevDefPtr hostdev = def->hostdevs[i];
+-        pciDevice *dev;
++    if (!(pcidevs = qemuGetPciHostDeviceList(conn, def)))
++        return -1;
+ 
+-        if (hostdev->mode != VIR_DOMAIN_HOSTDEV_MODE_SUBSYS)
+-            continue;
+-        if (hostdev->source.subsys.type != VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI)
+-            continue;
++    /* We have to use 3 loops here. *All* devices must
++     * be detached before we reset any of them, because
++     * in some cases you have to reset the whole PCI,
++     * which impacts all devices on it. Also, all devices
++     * must be reset before being marked as active.
++     */
+ 
+-        dev = pciGetDevice(conn,
+-                           hostdev->source.subsys.u.pci.domain,
+-                           hostdev->source.subsys.u.pci.bus,
+-                           hostdev->source.subsys.u.pci.slot,
+-                           hostdev->source.subsys.u.pci.function);
+-        if (!dev) {
+-            virErrorPtr err = virGetLastError();
+-            VIR_ERROR(_("Failed to allocate pciDevice: %s\n"),
+-                      err ? err->message : "");
+-            virResetError(err);
+-            continue;
+-        }
++    /* XXX validate that non-managed device isn't in use, eg
++     * by checking that device is either un-bound, or bound
++     * to pci-stub.ko
++     */
+ 
+-        if (pciResetDevice(conn, dev) < 0) {
+-            virErrorPtr err = virGetLastError();
+-            VIR_ERROR(_("Failed to reset PCI device: %s\n"),
+-                      err ? err->message : "");
+-            virResetError(err);
+-        }
++    for (i = 0; i < pcidevs->count; i++)
++        if (pciDeviceGetManaged(pcidevs->devs[i]) &&
++            pciDettachDevice(conn, pcidevs->devs[i]) < 0)
++            goto error;
++
++    /* Now that all the PCI hostdevs have be dettached, we can safely
++     * reset them */
++    for (i = 0; i < pcidevs->count; i++)
++        if (pciResetDevice(conn, pcidevs->devs[i],
++                           driver->activePciHostdevs) < 0)
++            goto error;
+ 
+-        pciFreeDevice(conn, dev);
++    /* Now mark all the devices as active */
++    for (i = 0; i < pcidevs->count; i++) {
++        if (pciDeviceListAdd(conn,
++                             driver->activePciHostdevs,
++                             pcidevs->devs[i]) < 0)
++            goto error;
++        pcidevs->devs[i] = NULL;
+     }
+ 
+-    for (i = 0 ; i < def->nhostdevs ; i++) {
+-        virDomainHostdevDefPtr hostdev = def->hostdevs[i];
+-        pciDevice *dev;
++    pciDeviceListFree(conn, pcidevs);
++    return 0;
+ 
+-        if (hostdev->mode != VIR_DOMAIN_HOSTDEV_MODE_SUBSYS)
+-            continue;
+-        if (hostdev->source.subsys.type != VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI)
+-            continue;
+-        if (!hostdev->managed)
+-            continue;
++error:
++    pciDeviceListFree(conn, pcidevs);
++    return -1;
++}
+ 
+-        dev = pciGetDevice(conn,
+-                           hostdev->source.subsys.u.pci.domain,
+-                           hostdev->source.subsys.u.pci.bus,
+-                           hostdev->source.subsys.u.pci.slot,
+-                           hostdev->source.subsys.u.pci.function);
+-        if (!dev) {
++static void
++qemuDomainReAttachHostDevices(virConnectPtr conn,
++                              struct qemud_driver *driver,
++                              virDomainDefPtr def)
++{
++    pciDeviceList *pcidevs;
++    int i;
++
++    if (!def->nhostdevs)
++        return;
++
++    if (!(pcidevs = qemuGetPciHostDeviceList(conn, def))) {
++        virErrorPtr err = virGetLastError();
++        VIR_ERROR(_("Failed to allocate pciDeviceList: %s\n"),
++                  err ? err->message : "");
++        virResetError(err);
++        return;
++    }
++
++    /* Again 3 loops; mark all devices as inactive before reset
++     * them and reset all the devices before re-attach */
++
++    for (i = 0; i < pcidevs->count; i++)
++        pciDeviceListDel(conn, driver->activePciHostdevs, pcidevs->devs[i]);
++
++    for (i = 0; i < pcidevs->count; i++)
++        if (pciResetDevice(conn, pcidevs->devs[i],
++                           driver->activePciHostdevs) < 0) {
+             virErrorPtr err = virGetLastError();
+-            VIR_ERROR(_("Failed to allocate pciDevice: %s\n"),
++            VIR_ERROR(_("Failed to reset PCI device: %s\n"),
+                       err ? err->message : "");
+             virResetError(err);
+-            continue;
+         }
+ 
+-        if (pciReAttachDevice(conn, dev) < 0) {
++    for (i = 0; i < pcidevs->count; i++)
++        if (pciDeviceGetManaged(pcidevs->devs[i]) &&
++            pciReAttachDevice(conn, pcidevs->devs[i]) < 0) {
+             virErrorPtr err = virGetLastError();
+             VIR_ERROR(_("Failed to re-attach PCI device: %s\n"),
+                       err ? err->message : "");
+             virResetError(err);
+         }
+ 
+-        pciFreeDevice(conn, dev);
+-    }
++    pciDeviceListFree(conn, pcidevs);
+ }
+ 
+ static int qemudDomainSetSecurityLabel(virConnectPtr conn, struct qemud_driver *driver, virDomainObjPtr vm)
+@@ -1468,7 +1503,7 @@ static int qemudStartVMDaemon(virConnectPtr conn,
+                                 &qemuCmdFlags) < 0)
+         goto cleanup;
+ 
+-    if (qemuPrepareHostDevices(conn, vm->def) < 0)
++    if (qemuPrepareHostDevices(conn, driver, vm->def) < 0)
+         goto cleanup;
+ 
+     vm->def->id = driver->nextvmid++;
+@@ -1634,7 +1669,7 @@ static void qemudShutdownVMDaemon(virConnectPtr conn ATTRIBUTE_UNUSED,
+         VIR_FREE(vm->def->seclabel.imagelabel);
+     }
+ 
+-    qemuDomainReAttachHostDevices(conn, vm->def);
++    qemuDomainReAttachHostDevices(conn, driver, vm->def);
+ 
+     if (qemudRemoveDomainStatus(conn, driver, vm) < 0) {
+         VIR_WARN(_("Failed to remove domain status for %s"),
+@@ -5247,6 +5282,7 @@ out:
+ static int
+ qemudNodeDeviceReset (virNodeDevicePtr dev)
+ {
++    struct qemud_driver *driver = dev->conn->privateData;
+     pciDevice *pci;
+     unsigned domain, bus, slot, function;
+     int ret = -1;
+@@ -5258,11 +5294,14 @@ qemudNodeDeviceReset (virNodeDevicePtr dev)
+     if (!pci)
+         return -1;
+ 
+-    if (pciResetDevice(dev->conn, pci) < 0)
++    qemuDriverLock(driver);
++
++    if (pciResetDevice(dev->conn, pci, driver->activePciHostdevs) < 0)
+         goto out;
+ 
+     ret = 0;
+ out:
++    qemuDriverUnlock(driver);
+     pciFreeDevice(dev->conn, pci);
+     return ret;
+ }
+diff --git a/src/xen_unified.c b/src/xen_unified.c
+index e708980..ba8c769 100644
+--- a/src/xen_unified.c
++++ b/src/xen_unified.c
+@@ -1529,7 +1529,7 @@ xenUnifiedNodeDeviceReset (virNodeDevicePtr dev)
+     if (!pci)
+         return -1;
+ 
+-    if (pciResetDevice(dev->conn, pci) < 0)
++    if (pciResetDevice(dev->conn, pci, NULL) < 0)
+         goto out;
+ 
+     ret = 0;
+-- 
+1.6.2.5
+

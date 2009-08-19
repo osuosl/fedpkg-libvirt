@@ -1,0 +1,53 @@
+From 2754da03d65f216271c81ece791b96a19272c812 Mon Sep 17 00:00:00 2001
+From: Mark McLoughlin <markmc@redhat.com>
+Date: Sat, 15 Aug 2009 19:38:15 +0100
+Subject: [PATCH] Fix list updating after disk hot-unplug
+
+The current code makes a poor effort at updating the device arrays after
+hot-unplug. Fix that and combine the two code paths into one.
+
+* src/qemu_driver.c: fix list updating in qemudDomainDetachPciDiskDevice()
+
+(cherry picked from commit 4e12af5623e4a962a6bb911af06fa29aa85befba)
+
+Fedora-patch: libvirt-fix-device-list-update-after-detach.patch
+---
+ src/qemu_driver.c |   21 ++++++++++-----------
+ 1 files changed, 10 insertions(+), 11 deletions(-)
+
+diff --git a/src/qemu_driver.c b/src/qemu_driver.c
+index dfd19c5..ce04beb 100644
+--- a/src/qemu_driver.c
++++ b/src/qemu_driver.c
+@@ -4123,18 +4123,17 @@ try_command:
+         goto cleanup;
+     }
+ 
+-    if (vm->def->ndisks > 1) {
+-        vm->def->disks[i] = vm->def->disks[--vm->def->ndisks];
+-        if (VIR_REALLOC_N(vm->def->disks, vm->def->ndisks) < 0) {
+-            virReportOOMError(conn);
+-            goto cleanup;
+-        }
+-        qsort(vm->def->disks, vm->def->ndisks, sizeof(*vm->def->disks),
+-              virDomainDiskQSort);
+-    } else {
+-        VIR_FREE(vm->def->disks[0]);
+-        vm->def->ndisks = 0;
++    if (i != --vm->def->ndisks)
++        memmove(&vm->def->disks[i],
++                &vm->def->disks[i+1],
++                sizeof(*vm->def->disks) * (vm->def->ndisks-i));
++    if (VIR_REALLOC_N(vm->def->disks, vm->def->ndisks) < 0) {
++        virReportOOMError(conn);
++        goto cleanup;
+     }
++    qsort(vm->def->disks, vm->def->ndisks, sizeof(*vm->def->disks),
++          virDomainDiskQSort);
++
+     ret = 0;
+ 
+ cleanup:
+-- 
+1.6.2.5
+

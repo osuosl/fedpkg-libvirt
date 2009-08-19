@@ -1,0 +1,141 @@
+From 9f80bab3829b97ac2802c15b9f3e4a6bbbb24627 Mon Sep 17 00:00:00 2001
+From: Mark McLoughlin <markmc@redhat.com>
+Date: Fri, 14 Aug 2009 08:31:11 +0100
+Subject: [PATCH] Improve PCI host device reset error message
+
+https://bugzilla.redhat.com/499678
+
+Currently, if we are unable to reset a PCI device we return a fairly
+generic 'No PCI reset capability available' error message.
+
+Fix that by returning an error from the individual reset messages and
+using that error to construct the higher level error mesage.
+
+* src/pci.c: set errors in pciTryPowerManagementReset() and
+  pciTrySecondaryBusReset() on failure; use those error messages
+  in pciResetDevice(), or explain that no reset support is available
+
+(cherry picked from commit ebea34185612c3b96d7d3bbd8b7c2ce6c9f4fe6f)
+
+Fedora-patch: libvirt-improve-pci-hostdev-reset-error-message.patch
+---
+ src/pci.c         |   44 +++++++++++++++++++++++++++++++-------------
+ src/qemu_driver.c |    4 ++--
+ 2 files changed, 33 insertions(+), 15 deletions(-)
+
+diff --git a/src/pci.c b/src/pci.c
+index f78ab9f..1dddb08 100644
+--- a/src/pci.c
++++ b/src/pci.c
+@@ -451,15 +451,18 @@ pciTrySecondaryBusReset(virConnectPtr conn, pciDevice *dev)
+      * are not in use by the host or other guests.
+      */
+     if (pciBusContainsOtherDevices(conn, dev)) {
+-        VIR_WARN("Other devices on bus with %s, not doing bus reset",
+-                 dev->name);
++        pciReportError(conn, VIR_ERR_NO_SUPPORT,
++                       _("Other devices on bus with %s, not doing bus reset"),
++                       dev->name);
+         return -1;
+     }
+ 
+     /* Find the parent bus */
+     parent = pciGetParentDevice(conn, dev);
+     if (!parent) {
+-        VIR_WARN("Failed to find parent device for %s", dev->name);
++        pciReportError(conn, VIR_ERR_NO_SUPPORT,
++                       _("Failed to find parent device for %s"),
++                       dev->name);
+         return -1;
+     }
+ 
+@@ -470,7 +473,9 @@ pciTrySecondaryBusReset(virConnectPtr conn, pciDevice *dev)
+      * are multiple devices/functions
+      */
+     if (pciRead(dev, 0, config_space, PCI_CONF_LEN) < 0) {
+-        VIR_WARN("Failed to save PCI config space for %s", dev->name);
++        pciReportError(conn, VIR_ERR_NO_SUPPORT,
++                       _("Failed to save PCI config space for %s"),
++                       dev->name);
+         goto out;
+     }
+ 
+@@ -487,9 +492,12 @@ pciTrySecondaryBusReset(virConnectPtr conn, pciDevice *dev)
+ 
+     usleep(200 * 1000); /* sleep 200ms */
+ 
+-    if (pciWrite(dev, 0, config_space, PCI_CONF_LEN) < 0)
+-        VIR_WARN("Failed to restore PCI config space for %s", dev->name);
+-
++    if (pciWrite(dev, 0, config_space, PCI_CONF_LEN) < 0) {
++        pciReportError(conn, VIR_ERR_NO_SUPPORT,
++                       _("Failed to restore PCI config space for %s"),
++                       dev->name);
++        goto out;
++    }
+     ret = 0;
+ out:
+     pciFreeDevice(conn, parent);
+@@ -511,7 +519,9 @@ pciTryPowerManagementReset(virConnectPtr conn ATTRIBUTE_UNUSED, pciDevice *dev)
+ 
+     /* Save and restore the device's config space. */
+     if (pciRead(dev, 0, &config_space[0], PCI_CONF_LEN) < 0) {
+-        VIR_WARN("Failed to save PCI config space for %s", dev->name);
++        pciReportError(conn, VIR_ERR_NO_SUPPORT,
++                       _("Failed to save PCI config space for %s"),
++                       dev->name);
+         return -1;
+     }
+ 
+@@ -528,8 +538,12 @@ pciTryPowerManagementReset(virConnectPtr conn ATTRIBUTE_UNUSED, pciDevice *dev)
+ 
+     usleep(10 * 1000); /* sleep 10ms */
+ 
+-    if (pciWrite(dev, 0, &config_space[0], PCI_CONF_LEN) < 0)
+-        VIR_WARN("Failed to restore PCI config space for %s", dev->name);
++    if (pciWrite(dev, 0, &config_space[0], PCI_CONF_LEN) < 0) {
++        pciReportError(conn, VIR_ERR_NO_SUPPORT,
++                       _("Failed to restore PCI config space for %s"),
++                       dev->name);
++        return -1;
++    }
+ 
+     return 0;
+ }
+@@ -577,10 +591,14 @@ pciResetDevice(virConnectPtr conn, pciDevice *dev)
+     if (ret < 0 && dev->bus != 0)
+         ret = pciTrySecondaryBusReset(conn, dev);
+ 
+-    if (ret < 0)
++    if (ret < 0) {
++        virErrorPtr err = virGetLastError();
+         pciReportError(conn, VIR_ERR_NO_SUPPORT,
+-                       _("No PCI reset capability available for %s"),
+-                       dev->name);
++                       _("Unable to reset PCI device %s: %s"),
++                       dev->name,
++                       err ? err->message : _("no FLR, PM reset or bus reset available"));
++    }
++
+     return ret;
+ }
+ 
+diff --git a/src/qemu_driver.c b/src/qemu_driver.c
+index ddd3693..9f87d2a 100644
+--- a/src/qemu_driver.c
++++ b/src/qemu_driver.c
+@@ -1345,9 +1345,9 @@ qemuDomainReAttachHostDevices(virConnectPtr conn, virDomainDefPtr def)
+             continue;
+         }
+ 
+-        if (pciDettachDevice(conn, dev) < 0) {
++        if (pciReAttachDevice(conn, dev) < 0) {
+             virErrorPtr err = virGetLastError();
+-            VIR_ERROR(_("Failed to reset PCI device: %s\n"),
++            VIR_ERROR(_("Failed to re-attach PCI device: %s\n"),
+                       err ? err->message : "");
+             virResetError(err);
+         }
+-- 
+1.6.2.5
+
