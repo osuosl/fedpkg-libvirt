@@ -69,7 +69,7 @@ Version: 0.6.2
 Release: 17%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
-Source: libvirt-%{version}.tar.gz
+Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
 
 # Patches cherry-picked from upstream
 Patch0: libvirt-0.6.2-qemu-drive-format.patch
