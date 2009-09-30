@@ -151,7 +151,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.7.1
-Release: 6%{?dist}%{?extra_release}
+Release: 7%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -169,6 +169,9 @@ Patch03: libvirt-fix-drv-supports-feature-bogus-error.patch
 
 # Fix raw save format
 Patch04: libvirt-fix-qemu-raw-format-save.patch
+
+# Fix USB device passthrough (#422683)
+Patch05: libvirt-fix-usb-device-passthrough.patch
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
@@ -387,6 +390,7 @@ of recent versions of Linux (and other OSes).
 %patch02 -p1
 %patch03 -p1
 %patch04 -p1
+%patch05 -p1
 
 %build
 %if ! %{with_xen}
@@ -777,6 +781,9 @@ fi
 %endif
 
 %changelog
+* Wed Sep 30 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-7
+- Fix USB device passthrough (#522683)
+
 * Mon Sep 21 2009 Chris Weyl <cweyl@alumni.drew.edu> - 0.7.1-6
 - rebuild for libssh2 1.2
 
