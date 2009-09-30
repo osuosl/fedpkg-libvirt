@@ -1,4 +1,4 @@
-From 0d72b6fb7d4aa5e55294eb3222e7156d3d75a9e7 Mon Sep 17 00:00:00 2001
+From 6096cb19d6b05707ca32f52b905c53818ecfc84b Mon Sep 17 00:00:00 2001
 From: Daniel P. Berrange <berrange@redhat.com>
 Date: Mon, 17 Aug 2009 08:52:30 +0100
 Subject: [PATCH] Disable sound cards when running sVirt
@@ -12,10 +12,10 @@ Fedora-patch: libvirt-0.6.2-svirt-sound.patch
  1 files changed, 16 insertions(+), 1 deletions(-)
 
 diff --git a/src/qemu_conf.c b/src/qemu_conf.c
-index 1194e36..f42aeaa 100644
+index d76b2b6..22c5363 100644
 --- a/src/qemu_conf.c
 +++ b/src/qemu_conf.c
-@@ -795,6 +795,20 @@ int qemudBuildCommandLine(virConnectPtr conn,
+@@ -885,6 +885,20 @@ int qemudBuildCommandLine(virConnectPtr conn,
      char domid[50];
      char *pidfile;
      const char *cpu = NULL;
@@ -36,7 +36,7 @@ index 1194e36..f42aeaa 100644
  
      uname_normalize(&ut);
  
-@@ -1441,7 +1455,8 @@ int qemudBuildCommandLine(virConnectPtr conn,
+@@ -1531,7 +1545,8 @@ int qemudBuildCommandLine(virConnectPtr conn,
      }
  
      /* Add sound hardware */
