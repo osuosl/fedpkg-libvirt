@@ -151,14 +151,10 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.7.1
-Release: 7%{?dist}%{?extra_release}
+Release: 8%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
-
-# Temporary hack till PulseAudio autostart problems are sorted
-# out when SELinux enforcing (bz 486112)
-Patch00: libvirt-0.6.4-svirt-sound.patch
 
 # A couple of hot-unplug memory handling fixes (#523953)
 Patch01: libvirt-fix-net-hotunplug-double-free.patch
@@ -172,6 +168,9 @@ Patch04: libvirt-fix-qemu-raw-format-save.patch
 
 # Fix USB device passthrough (#422683)
 Patch05: libvirt-fix-usb-device-passthrough.patch
+
+# Disable sound backend (#524499, #508317)
+Patch06: libvirt-disable-audio-backend.patch
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
@@ -385,12 +384,12 @@ of recent versions of Linux (and other OSes).
 %prep
 %setup -q
 
-%patch00 -p1
 %patch01 -p1
 %patch02 -p1
 %patch03 -p1
 %patch04 -p1
 %patch05 -p1
+%patch06 -p1
 
 %build
 %if ! %{with_xen}
@@ -781,6 +780,9 @@ fi
 %endif
 
 %changelog
+* Thu Oct  1 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-8
+- Disable sound backend, even when selinux is disabled (#524499)
+
 * Wed Sep 30 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-7
 - Fix USB device passthrough (#522683)
 

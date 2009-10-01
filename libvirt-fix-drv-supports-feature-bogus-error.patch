@@ -1,4 +1,4 @@
-From 2f6e857ac7d6ed5cd417e684147dd9c98775ab3d Mon Sep 17 00:00:00 2001
+From 7692e1e19487c28454b1e5f6488d5574c70883f2 Mon Sep 17 00:00:00 2001
 From: Chris Lalancette <clalance@redhat.com>
 Date: Mon, 21 Sep 2009 14:53:31 +0200
 Subject: [PATCH] Don't do virSetConnError when virDrvSupportsFeature is successful.

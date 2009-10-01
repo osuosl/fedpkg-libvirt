@@ -1,4 +1,4 @@
-From e50c91fdcea5d81e3eb2051c05f4e51a16c3e692 Mon Sep 17 00:00:00 2001
+From f1be5a4714e194a84840343e0937fe62463a18dc Mon Sep 17 00:00:00 2001
 From: Charles Duffy <Charles_Duffy@dell.com>
 Date: Fri, 18 Sep 2009 11:32:35 -0500
 Subject: [PATCH] Prevent attempt to call cat -c during virDomainSave to raw

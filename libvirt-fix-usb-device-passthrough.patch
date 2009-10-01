@@ -1,4 +1,4 @@
-From 16f20706f8d2f113bb6a49f56e415c16d438183e Mon Sep 17 00:00:00 2001
+From 6b12148864cf6a1d22a2cf4e0e9c48e9946331cb Mon Sep 17 00:00:00 2001
 From: Mark McLoughlin <markmc@redhat.com>
 Date: Wed, 30 Sep 2009 18:37:03 +0100
 Subject: [PATCH] Fix USB device re-labelling
@@ -37,5 +37,5 @@ index bc295b1..b4dc153 100644
  
      case VIR_DOMAIN_HOSTDEV_SUBSYS_TYPE_PCI: {
 -- 
-1.6.4.4
+1.6.2.5
 

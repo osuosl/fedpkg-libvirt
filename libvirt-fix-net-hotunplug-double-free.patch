@@ -1,4 +1,4 @@
-From d09ff3c35c29d14760d5ea03559042cc024e09ab Mon Sep 17 00:00:00 2001
+From ba585ed6cff624c6c0f1f9801382fd6846466ee0 Mon Sep 17 00:00:00 2001
 From: Mark McLoughlin <markmc@redhat.com>
 Date: Thu, 17 Sep 2009 15:31:08 +0100
 Subject: [PATCH] Fix net/disk hot-unplug segfault
