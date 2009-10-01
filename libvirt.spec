@@ -172,6 +172,9 @@ Patch05: libvirt-fix-usb-device-passthrough.patch
 # Disable sound backend (#524499, #508317)
 Patch06: libvirt-disable-audio-backend.patch
 
+# Re-label qcow2 backing files (#497131)
+Patch07: libvirt-svirt-relabel-qcow2-backing-files.patch
+
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python-devel
@@ -390,6 +393,7 @@ of recent versions of Linux (and other OSes).
 %patch04 -p1
 %patch05 -p1
 %patch06 -p1
+%patch07 -p1
 
 %build
 %if ! %{with_xen}
@@ -782,6 +786,7 @@ fi
 %changelog
 * Thu Oct  1 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-8
 - Disable sound backend, even when selinux is disabled (#524499)
+- Re-label qcow2 backing files (#497131)
 
 * Wed Sep 30 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-7
 - Fix USB device passthrough (#522683)
