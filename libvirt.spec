@@ -151,7 +151,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.7.1
-Release: 8%{?dist}%{?extra_release}
+Release: 9%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -174,6 +174,9 @@ Patch06: libvirt-disable-audio-backend.patch
 
 # Re-label qcow2 backing files (#497131)
 Patch07: libvirt-svirt-relabel-qcow2-backing-files.patch
+
+# Change logrotate config to weekly (#526769)
+Patch08: libvirt-change-logrotate-config-to-weekly.patch
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
@@ -394,6 +397,7 @@ of recent versions of Linux (and other OSes).
 %patch05 -p1
 %patch06 -p1
 %patch07 -p1
+%patch08 -p1
 
 %build
 %if ! %{with_xen}
@@ -784,6 +788,9 @@ fi
 %endif
 
 %changelog
+* Tue Oct  6 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-9
+- Change logrotate config to weekly (#526769)
+
 * Thu Oct  1 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-8
 - Disable sound backend, even when selinux is disabled (#524499)
 - Re-label qcow2 backing files (#497131)

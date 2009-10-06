@@ -1,0 +1,34 @@
+From bcd4180124afa20580d720912e2179b3a2f9295a Mon Sep 17 00:00:00 2001
+From: Daniel Veillard <veillard@redhat.com>
+Date: Mon, 5 Oct 2009 17:03:14 +0200
+Subject: [PATCH] 526769 change logrotate config default to weekly
+
+* daemon/libvirtd.logrotate.in: change to weekly rotation of logs,
+  keep a month worth of data and also extend to cover LXC and UML
+  domain logs
+
+(cherry picked from commit 529325bbdd050af89bda5a5c1a01b5553c49a57e)
+
+Fedora-patch: libvirt-change-logrotate-config-to-weekly.patch
+---
+ qemud/libvirtd.logrotate.in |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/qemud/libvirtd.logrotate.in b/qemud/libvirtd.logrotate.in
+index 9b42630..093651c 100644
+--- a/qemud/libvirtd.logrotate.in
++++ b/qemud/libvirtd.logrotate.in
+@@ -1,7 +1,7 @@
+-@localstatedir@/log/libvirt/qemu/*.log {
+-        daily
++@localstatedir@/log/libvirt/qemu/*.log @localstatedir@/log/libvirt/uml/*.log @localstatedir@/log/libvirt/lxc/*.log {
++        weekly
+         missingok
+-        rotate 7
++        rotate 4
+         compress
+         delaycompress
+         copytruncate
+-- 
+1.6.2.5
+
