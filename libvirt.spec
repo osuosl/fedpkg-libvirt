@@ -22,14 +22,14 @@
 %endif
 
 
-# Now set the defaults for all the important features, independant
+# Now set the defaults for all the important features, independent
 # of any particular OS
 
 # First the daemon itself
 %define with_libvirtd      0%{!?_without_libvirtd:%{server_drivers}}
 %define with_avahi         0%{!?_without_avahi:%{server_drivers}}
 
-# Then the hypervisor drivers
+# Then the hypervisor drivers that run on local host
 %define with_xen           0%{!?_without_xen:%{server_drivers}}
 %define with_xen_proxy     0%{!?_without_xen_proxy:%{server_drivers}}
 %define with_qemu          0%{!?_without_qemu:%{server_drivers}}
@@ -37,9 +37,12 @@
 %define with_lxc           0%{!?_without_lxc:%{server_drivers}}
 %define with_vbox          0%{!?_without_vbox:%{server_drivers}}
 %define with_uml           0%{!?_without_uml:%{server_drivers}}
+# XXX this shouldn't be here, but it mistakenly links into libvirtd
 %define with_one           0%{!?_without_one:%{server_drivers}}
-%define with_phyp          0%{!?_without_phyp:%{server_drivers}}
-%define with_esx           0%{!?_without_esx:%{server_drivers}}
+
+# Then the hypervisor drivers that talk a native remote protocol
+%define with_phyp          0%{!?_without_phyp:1}
+%define with_esx           0%{!?_without_esx:1}
 
 # Then the secondary host drivers
 %define with_network       0%{!?_without_network:%{server_drivers}}
@@ -69,10 +72,6 @@
 %define with_xen 0
 %endif
 
-# Numactl is not available on s390[x]
-%ifarch s390 s390x
-%define with_numactl 0
-%endif
 
 # RHEL doesn't ship OpenVZ, VBox, UML, OpenNebula, PowerHypervisor or ESX
 %if 0%{?rhel}
@@ -100,6 +99,7 @@
 %endif
 %define with_xen 0
 %endif
+
 # If Xen isn't turned on, we shouldn't build the xen proxy either
 %if ! %{with_xen}
 %define with_xen_proxy 0
@@ -151,7 +151,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.7.1
-Release: 9%{?dist}%{?extra_release}
+Release: 10%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -177,6 +177,7 @@ Patch07: libvirt-svirt-relabel-qcow2-backing-files.patch
 
 # Change logrotate config to weekly (#526769)
 Patch08: libvirt-change-logrotate-config-to-weekly.patch
+Patch09: libvirt-logrotate-create-lxc-uml-dirs.patch
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
@@ -337,6 +338,9 @@ BuildRequires: netcf-devel
 # Fedora build root suckage
 BuildRequires: gawk
 
+# Needed for libvirt-logrotate-create-lxc-uml-dirs.patch
+BuildRequires: automake
+
 %description
 Libvirt is a C toolkit to interact with the virtualization capabilities
 of recent versions of Linux (and other OSes). The main package includes
@@ -378,7 +382,7 @@ the virtualization capabilities of recent versions of Linux (and other OSes).
 %package python
 Summary: Python bindings for the libvirt library
 Group: Development/Libraries
-Requires: libvirt = %{version}-%{release}
+Requires: libvirt-client = %{version}-%{release}
 
 %description python
 The libvirt-python package contains a module that permits applications
@@ -398,8 +402,12 @@ of recent versions of Linux (and other OSes).
 %patch06 -p1
 %patch07 -p1
 %patch08 -p1
+%patch09 -p1
 
 %build
+# Needed for libvirt-logrotate-create-lxc-uml-dirs.patch
+automake
+
 %if ! %{with_xen}
 %define _without_xen --without-xen
 %endif
@@ -622,7 +630,7 @@ fi
 
 /sbin/chkconfig --add libvirtd
 if [ "$1" -ge "1" ]; then
-    /sbin/service libvirtd condrestart > /dev/null 2>&1
+	/sbin/service libvirtd condrestart > /dev/null 2>&1
 fi
 %endif
 
@@ -655,6 +663,9 @@ fi
 %config(noreplace) %{_sysconfdir}/sysconfig/libvirtd
 %config(noreplace) %{_sysconfdir}/libvirt/libvirtd.conf
 %config(noreplace) %{_sysconfdir}/logrotate.d/libvirtd
+%dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/qemu/
+%dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/lxc/
+%dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/uml/
 
 %if %{with_qemu}
 %config(noreplace) %{_sysconfdir}/libvirt/qemu.conf
@@ -712,13 +723,11 @@ fi
 %endif
 
 %dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/
-%if %{with_qemu}
-%dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/qemu/
-%endif
 
 %if %{with_xen_proxy}
 %attr(4755, root, root) %{_libexecdir}/libvirt_proxy
 %endif
+
 %if %{with_lxc}
 %attr(0755, root, root) %{_libexecdir}/libvirt_lxc
 %endif
@@ -788,6 +797,11 @@ fi
 %endif
 
 %changelog
+* Tue Oct  6 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-10
+- Create /var/log/libvirt/{lxc,uml} dirs for logrotate
+- Make libvirt-python dependon on libvirt-client
+- Sync misc minor changes from upstream spec
+
 * Tue Oct  6 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-9
 - Change logrotate config to weekly (#526769)
 
