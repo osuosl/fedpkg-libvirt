@@ -1,0 +1,30 @@
+From 81e967c716ce8c085be8baad9169f7772452d187 Mon Sep 17 00:00:00 2001
+From: Mark McLoughlin <markmc@redhat.com>
+Date: Thu, 24 Sep 2009 08:55:55 +0100
+Subject: [PATCH] Fix a typo in virNetHasValidPciAddr() too
+
+* src/domain_conf.h: check domain/bus/slot, not domain/domain/slot
+
+(cherry-picked from commit 6bfffce91635bb08de601747e94ed1182c0f47eb)
+
+Fedora-patch: libvirt-fix-device-detach-typo2.patch
+---
+ src/domain_conf.h |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/src/domain_conf.h b/src/domain_conf.h
+index d494e54..7c918a7 100644
+--- a/src/domain_conf.h
++++ b/src/domain_conf.h
+@@ -207,7 +207,7 @@ struct _virDomainNetDef {
+ static inline int
+ virNetHasValidPciAddr(virDomainNetDefPtr def)
+ {
+-    return def->pci_addr.domain || def->pci_addr.domain || def->pci_addr.slot;
++    return def->pci_addr.domain || def->pci_addr.bus || def->pci_addr.slot;
+ }
+ 
+ enum virDomainChrSrcType {
+-- 
+1.6.2.5
+

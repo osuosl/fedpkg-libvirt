@@ -151,7 +151,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.7.1
-Release: 10%{?dist}%{?extra_release}
+Release: 11%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -178,6 +178,14 @@ Patch07: libvirt-svirt-relabel-qcow2-backing-files.patch
 # Change logrotate config to weekly (#526769)
 Patch08: libvirt-change-logrotate-config-to-weekly.patch
 Patch09: libvirt-logrotate-create-lxc-uml-dirs.patch
+
+# Add several PCI hot-unplug typo fixes from upstream
+Patch10: libvirt-fix-device-detach-typo1.patch
+Patch11: libvirt-fix-device-detach-typo2.patch
+Patch12: libvirt-fix-device-detach-typo3.patch
+
+# Fix libvirtd memory leak during error reply sending (#528162)
+Patch13: libvirt-fix-libvirtd-leak-in-error-reply.patch
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
@@ -403,6 +411,10 @@ of recent versions of Linux (and other OSes).
 %patch07 -p1
 %patch08 -p1
 %patch09 -p1
+%patch10 -p1
+%patch11 -p1
+%patch12 -p1
+%patch13 -p1
 
 %build
 # Needed for libvirt-logrotate-create-lxc-uml-dirs.patch
@@ -797,6 +809,10 @@ fi
 %endif
 
 %changelog
+* Fri Oct  9 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-11
+- Fix libvirtd memory leak during error reply sending (#528162)
+- Add several PCI hot-unplug typo fixes from upstream
+
 * Tue Oct  6 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-10
 - Create /var/log/libvirt/{lxc,uml} dirs for logrotate
 - Make libvirt-python dependon on libvirt-client

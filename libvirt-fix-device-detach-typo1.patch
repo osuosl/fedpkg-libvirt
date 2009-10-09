@@ -1,0 +1,29 @@
+From 58c38896a67c170063401d8091bae7dca8842923 Mon Sep 17 00:00:00 2001
+From: Jiri Denemark <jdenemar@redhat.com>
+Date: Wed, 23 Sep 2009 18:46:23 +0200
+Subject: [PATCH] Fix a typo in virDiskHasValidPciAddr()
+
+(cherry-picked from commit 3620e3cdcfe56cc4475b5ef1a0a893757240b795)
+
+Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
+Fedora-patch: libvirt-fix-device-detach-typo1.patch
+---
+ src/domain_conf.h |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/src/domain_conf.h b/src/domain_conf.h
+index 09368d9..d494e54 100644
+--- a/src/domain_conf.h
++++ b/src/domain_conf.h
+@@ -125,7 +125,7 @@ struct _virDomainDiskDef {
+ static inline int
+ virDiskHasValidPciAddr(virDomainDiskDefPtr def)
+ {
+-    return def->pci_addr.domain || def->pci_addr.domain || def->pci_addr.slot;
++    return def->pci_addr.domain || def->pci_addr.bus || def->pci_addr.slot;
+ }
+ 
+ 
+-- 
+1.6.2.5
+
