@@ -1,4 +1,4 @@
-From 8c8bca077a913e7ae49798400f4ac3f121600881 Mon Sep 17 00:00:00 2001
+From 0b846a30468a6b4586407f020ccde7bb51afaf98 Mon Sep 17 00:00:00 2001
 From: Daniel P. Berrange <berrange@redhat.com>
 Date: Mon, 12 Oct 2009 20:03:50 +0100
 Subject: [PATCH] Fix QEMU restore from file in raw format
@@ -13,7 +13,7 @@ in the program name.
 
 (cherry picked from commit 74b379cbd5ba9f472a3a2d5710e497966b1a3a37)
 
-Fedora-patch: libvirt-fix-qemu-restore-from-raw.patch
+Fedora-patch: libvirt-fix-qemu-restore-from-raw1.patch
 ---
  src/qemu_driver.c |    3 +--
  1 files changed, 1 insertions(+), 2 deletions(-)

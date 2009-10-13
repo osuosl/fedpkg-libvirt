@@ -188,7 +188,8 @@ Patch12: libvirt-fix-device-detach-typo3.patch
 Patch13: libvirt-fix-libvirtd-leak-in-error-reply.patch
 
 # Fix restore of qemu guest using raw save format (#523158)
-Patch14: libvirt-fix-qemu-restore-from-raw.patch
+Patch14: libvirt-fix-qemu-restore-from-raw1.patch
+Patch15: libvirt-fix-qemu-restore-from-raw2.patch
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
@@ -419,6 +420,7 @@ of recent versions of Linux (and other OSes).
 %patch12 -p1
 %patch13 -p1
 %patch14 -p1
+%patch15 -p1
 
 %build
 # Needed for libvirt-logrotate-create-lxc-uml-dirs.patch
