@@ -1,0 +1,38 @@
+From 8c8bca077a913e7ae49798400f4ac3f121600881 Mon Sep 17 00:00:00 2001
+From: Daniel P. Berrange <berrange@redhat.com>
+Date: Mon, 12 Oct 2009 20:03:50 +0100
+Subject: [PATCH] Fix QEMU restore from file in raw format
+
+The logic for running the decompression programs was broken in
+commit f238709304f9f6c57204cdd943e542cbae38fa5f, so that for
+non-raw formats the decompression program was never run, and
+for raw formats, it tried to exec an argv[] with initial NULL
+in the program name.
+
+* src/qemu/qemu_driver.c: Fix logic in runing decompression program
+
+(cherry picked from commit 74b379cbd5ba9f472a3a2d5710e497966b1a3a37)
+
+Fedora-patch: libvirt-fix-qemu-restore-from-raw.patch
+---
+ src/qemu_driver.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
+
+diff --git a/src/qemu_driver.c b/src/qemu_driver.c
+index 550a59c..0ce403c 100644
+--- a/src/qemu_driver.c
++++ b/src/qemu_driver.c
+@@ -4541,9 +4541,8 @@ static int qemudDomainRestore(virConnectPtr conn,
+             goto cleanup;
+         }
+ 
+-        if (header.compressed != QEMUD_SAVE_FORMAT_RAW)
++        if (header.compressed != QEMUD_SAVE_FORMAT_RAW) {
+             intermediate_argv[0] = prog;
+-        else {
+             intermediatefd = fd;
+             fd = -1;
+             if (virExec(conn, intermediate_argv, NULL, NULL,
+-- 
+1.6.2.5
+

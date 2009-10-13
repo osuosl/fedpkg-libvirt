@@ -151,7 +151,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.7.1
-Release: 11%{?dist}%{?extra_release}
+Release: 12%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -186,6 +186,9 @@ Patch12: libvirt-fix-device-detach-typo3.patch
 
 # Fix libvirtd memory leak during error reply sending (#528162)
 Patch13: libvirt-fix-libvirtd-leak-in-error-reply.patch
+
+# Fix restore of qemu guest using raw save format (#523158)
+Patch14: libvirt-fix-qemu-restore-from-raw.patch
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
@@ -415,6 +418,7 @@ of recent versions of Linux (and other OSes).
 %patch11 -p1
 %patch12 -p1
 %patch13 -p1
+%patch14 -p1
 
 %build
 # Needed for libvirt-logrotate-create-lxc-uml-dirs.patch
@@ -809,6 +813,9 @@ fi
 %endif
 
 %changelog
+* Tue Oct 13 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-12
+- Fix restore of qemu guest using raw save format (#523158)
+
 * Fri Oct  9 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-11
 - Fix libvirtd memory leak during error reply sending (#528162)
 - Add several PCI hot-unplug typo fixes from upstream
