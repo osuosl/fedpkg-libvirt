@@ -1,4 +1,4 @@
-From 6096cb19d6b05707ca32f52b905c53818ecfc84b Mon Sep 17 00:00:00 2001
+From 2fcd18b6a39f495d84eb3ef56a49994621c8f7d3 Mon Sep 17 00:00:00 2001
 From: Daniel P. Berrange <berrange@redhat.com>
 Date: Mon, 17 Aug 2009 08:52:30 +0100
 Subject: [PATCH] Disable sound cards when running sVirt

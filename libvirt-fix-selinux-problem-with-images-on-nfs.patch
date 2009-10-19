@@ -1,0 +1,61 @@
+From ea544e7b038776c7db555ab0428b63ebb1604163 Mon Sep 17 00:00:00 2001
+From: Darryl L. Pierce <dpierce@redhat.com>
+Date: Fri, 21 Aug 2009 16:57:29 +0200
+Subject: [PATCH] 517157 fix selinux problem with images on NFS
+
+* src/security_selinux.c: ignores EOPNOTSUPP when attempting to access an
+  NFS share
+
+(cherry picked from commit 777fc2e9d60844a7387355d9cef06bd25190d146)
+
+Fedora-patch: libvirt-fix-selinux-problem-with-images-on-nfs.patch
+---
+ src/security_selinux.c |   25 +++++++++++++++++--------
+ 1 files changed, 17 insertions(+), 8 deletions(-)
+
+diff --git a/src/security_selinux.c b/src/security_selinux.c
+index 8ebe1fe..97f16b3 100644
+--- a/src/security_selinux.c
++++ b/src/security_selinux.c
+@@ -285,6 +285,8 @@ SELinuxSetFilecon(virConnectPtr conn, const char *path, char *tcon)
+     VIR_INFO("Setting SELinux context on '%s' to '%s'", path, tcon);
+ 
+     if (setfilecon(path, tcon) < 0) {
++        int setfilecon_errno = errno;
++
+         if (getfilecon(path, &econ) >= 0) {
+             if (STREQ(tcon, econ)) {
+                 freecon(econ);
+@@ -293,14 +295,21 @@ SELinuxSetFilecon(virConnectPtr conn, const char *path, char *tcon)
+             }
+             freecon(econ);
+         }
+-        virSecurityReportError(conn, VIR_ERR_ERROR,
+-                               _("%s: unable to set security context "
+-                                 "'\%s\' on %s: %s."), __func__,
+-                               tcon,
+-                               path,
+-                               virStrerror(errno, ebuf, sizeof ebuf));
+-        if (security_getenforce() == 1)
+-            return -1;
++
++        /* if the error complaint is related to an image hosted on
++         * an nfs mount, then ignore it.
++         * rhbz 517157
++         */
++        if (setfilecon_errno != EOPNOTSUPP) {
++            virSecurityReportError(conn, VIR_ERR_ERROR,
++                                 _("%s: unable to set security context "
++                                   "'\%s\' on %s: %s."), __func__,
++                                 tcon,
++                                 path,
++                                 virStrerror(errno, ebuf, sizeof ebuf));
++            if (security_getenforce() == 1)
++                return -1;
++        }
+     }
+     return 0;
+ }
+-- 
+1.6.2.5
+
