@@ -1,0 +1,32 @@
+From ba3bc9b22a21b8e9e110166c98be70e2ad6469cb Mon Sep 17 00:00:00 2001
+From: Cole Robinson <crobinso@redhat.com>
+Date: Tue, 13 Oct 2009 11:31:27 -0400
+Subject: [PATCH] network: Fix printing XML 'delay' attribute
+
+When specifying bridge delay via network XML define, we were looking for
+the 'delay' attribute, but would dump the value as 'forwardDelay'. Have
+the output match the expected input (and schema).
+
+(cherry picked from commit 3b13aa3db37bf5a692bccfa015a01999043e797b)
+
+Fedora-patch: libvirt-network-delay-attribute-formatting.patch
+---
+ src/network_conf.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/src/network_conf.c b/src/network_conf.c
+index 3764bb4..f75c457 100644
+--- a/src/network_conf.c
++++ b/src/network_conf.c
+@@ -587,7 +587,7 @@ char *virNetworkDefFormat(virConnectPtr conn,
+     virBufferAddLit(&buf, "  <bridge");
+     if (def->bridge)
+         virBufferEscapeString(&buf, " name='%s'", def->bridge);
+-    virBufferVSprintf(&buf, " stp='%s' forwardDelay='%ld' />\n",
++    virBufferVSprintf(&buf, " stp='%s' delay='%ld' />\n",
+                       def->stp ? "on" : "off",
+                       def->delay);
+ 
+-- 
+1.6.2.5
+

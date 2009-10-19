@@ -1,0 +1,177 @@
+From d7722ed1cb04aa8a7b9fbf880882841867b69ab0 Mon Sep 17 00:00:00 2001
+From: Mark McLoughlin <markmc@redhat.com>
+Date: Mon, 12 Oct 2009 10:52:13 +0100
+Subject: [PATCH] Take domain type into account when looking up default machine
+
+If one has e.g.
+
+  <guest>
+    <os_type>hvm</os_type>
+    <arch name='x86_64'>
+      <wordsize>64</wordsize>
+      <emulator>/usr/bin/qemu-system-x86_64</emulator>
+      <machine>pc-0.11</machine>
+      <machine canonical='pc-0.11'>pc</machine>
+      <machine>pc-0.10</machine>
+      <machine>isapc</machine>
+      <domain type='qemu'>
+      </domain>
+      <domain type='kvm'>
+        <emulator>/usr/bin/kvm</emulator>
+        <machine>pc</machine>
+        <machine>isapc</machine>
+      </domain>
+    </arch>
+  </guest>
+
+and start a guest with:
+
+  <domain type='kvm'>
+    ...
+    <os>
+      <type arch='x86_64'>hvm</type>
+      ...
+    </os>
+  </domain>
+
+then the default machine type should be 'pc' and not 'pc-0.11'
+
+Issue was reported by Anton Protopopov.
+
+* src/capabilities.[ch]: pass the domain type to
+  virCapabilitiesDefaultGuestArch() and use it to look up the default
+  machine type from a specific guest domain if needed.
+
+* src/conf/domain_conf.c, src/xen/xm_internal.c: update
+
+* tests/qemuxml2argvdata/qemuxml2argv-machine-aliases2.xml: update
+  the domain type to 'kvm' and remove the machine type to check
+  that the default gets looked up correctly
+
+(cherry picked from commit 73c901a8075c09203545fc81164c1e5f11c67c89)
+
+Fedora-patch: libvirt-qemu-machine-type-fixes1.patch
+---
+ src/capabilities.c                                 |   31 ++++++++++++++++---
+ src/capabilities.h                                 |    3 +-
+ src/domain_conf.c                                  |    3 +-
+ src/xm_internal.c                                  |    3 +-
+ .../qemuxml2argv-machine-aliases2.xml              |    4 +-
+ 5 files changed, 34 insertions(+), 10 deletions(-)
+
+diff --git a/src/capabilities.c b/src/capabilities.c
+index 38fe7fc..6ebddf5 100644
+--- a/src/capabilities.c
++++ b/src/capabilities.c
+@@ -549,22 +549,43 @@ virCapabilitiesDefaultGuestArch(virCapsPtr caps,
+  * @caps: capabilities to query
+  * @ostype: OS type to search for
+  * @arch: architecture to search for
++ * @domain: domain type to search for
+  *
+  * Returns the first machine variant associated with
+- * the requested operating system type and architecture
++ * the requested operating system type, architecture
++ * and domain type
+  */
+ extern const char *
+ virCapabilitiesDefaultGuestMachine(virCapsPtr caps,
+                                    const char *ostype,
+-                                   const char *arch)
++                                   const char *arch,
++                                   const char *domain)
+ {
+     int i;
++
+     for (i = 0 ; i < caps->nguests ; i++) {
+-        if (STREQ(caps->guests[i]->ostype, ostype) &&
+-            STREQ(caps->guests[i]->arch.name, arch) &&
+-            caps->guests[i]->arch.defaultInfo.nmachines)
++        virCapsGuestPtr guest = caps->guests[i];
++        int j;
++
++        if (!STREQ(guest->ostype, ostype) || !STREQ(guest->arch.name, arch))
++            continue;
++
++        for (j = 0; j < guest->arch.ndomains; j++) {
++            virCapsGuestDomainPtr dom= guest->arch.domains[j];
++
++            if (!STREQ(dom->type, domain))
++                continue;
++
++            if (!dom->info.nmachines)
++                break;
++
++            return dom->info.machines[0]->name;
++        }
++
++        if (guest->arch.defaultInfo.nmachines)
+             return caps->guests[i]->arch.defaultInfo.machines[0]->name;
+     }
++
+     return NULL;
+ }
+ 
+diff --git a/src/capabilities.h b/src/capabilities.h
+index b958d95..2f24605 100644
+--- a/src/capabilities.h
++++ b/src/capabilities.h
+@@ -207,7 +207,8 @@ virCapabilitiesDefaultGuestArch(virCapsPtr caps,
+ extern const char *
+ virCapabilitiesDefaultGuestMachine(virCapsPtr caps,
+                                    const char *ostype,
+-                                   const char *arch);
++                                   const char *arch,
++                                   const char *domain);
+ extern const char *
+ virCapabilitiesDefaultGuestEmulator(virCapsPtr caps,
+                                     const char *ostype,
+diff --git a/src/domain_conf.c b/src/domain_conf.c
+index 5ae0775..c424c67 100644
+--- a/src/domain_conf.c
++++ b/src/domain_conf.c
+@@ -2664,7 +2664,8 @@ static virDomainDefPtr virDomainDefParseXML(virConnectPtr conn,
+     if (!def->os.machine) {
+         const char *defaultMachine = virCapabilitiesDefaultGuestMachine(caps,
+                                                                         def->os.type,
+-                                                                        def->os.arch);
++                                                                        def->os.arch,
++                                                                        virDomainVirtTypeToString(def->virtType));
+         if (defaultMachine != NULL) {
+             if (!(def->os.machine = strdup(defaultMachine))) {
+                 virReportOOMError(conn);
+diff --git a/src/xm_internal.c b/src/xm_internal.c
+index de3aca9..6d351d4 100644
+--- a/src/xm_internal.c
++++ b/src/xm_internal.c
+@@ -720,7 +720,8 @@ xenXMDomainConfigParse(virConnectPtr conn, virConfPtr conf) {
+ 
+     defaultMachine = virCapabilitiesDefaultGuestMachine(priv->caps,
+                                                         def->os.type,
+-                                                        def->os.arch);
++                                                        def->os.arch,
++                                                        virDomainVirtTypeToString(def->virtType));
+     if (defaultMachine != NULL) {
+         if (!(def->os.machine = strdup(defaultMachine)))
+             goto no_memory;
+diff --git a/tests/qemuxml2argvdata/qemuxml2argv-machine-aliases2.xml b/tests/qemuxml2argvdata/qemuxml2argv-machine-aliases2.xml
+index 6f62243..a2c6254 100644
+--- a/tests/qemuxml2argvdata/qemuxml2argv-machine-aliases2.xml
++++ b/tests/qemuxml2argvdata/qemuxml2argv-machine-aliases2.xml
+@@ -1,11 +1,11 @@
+-<domain type='qemu'>
++<domain type='kvm'>
+   <name>QEMUGuest1</name>
+   <uuid>c7a5fdbd-edaf-9455-926a-d65c16db1809</uuid>
+   <memory>219200</memory>
+   <currentMemory>219200</currentMemory>
+   <vcpu>1</vcpu>
+   <os>
+-    <type arch='x86_64' machine='pc'>hvm</type>
++    <type arch='x86_64'>hvm</type>
+     <boot dev='hd'/>
+   </os>
+   <clock offset='utc'/>
+-- 
+1.6.2.5
+

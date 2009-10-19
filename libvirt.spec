@@ -151,7 +151,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.7.1
-Release: 12%{?dist}%{?extra_release}
+Release: 13%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -190,6 +190,14 @@ Patch13: libvirt-fix-libvirtd-leak-in-error-reply.patch
 # Fix restore of qemu guest using raw save format (#523158)
 Patch14: libvirt-fix-qemu-restore-from-raw1.patch
 Patch15: libvirt-fix-qemu-restore-from-raw2.patch
+
+# Misc fixes to qemu machine types handling
+Patch16: libvirt-qemu-machine-type-fixes1.patch
+Patch17: libvirt-qemu-machine-type-fixes2.patch
+
+# A couple of XML formatting fixes
+Patch18: libvirt-storage-iscsi-auth-xml-formatting.patch
+Patch19: libvirt-network-delay-attribute-formatting.patch
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
@@ -421,6 +429,10 @@ of recent versions of Linux (and other OSes).
 %patch13 -p1
 %patch14 -p1
 %patch15 -p1
+%patch16 -p1
+%patch17 -p1
+%patch18 -p1
+%patch19 -p1
 
 %build
 # Needed for libvirt-logrotate-create-lxc-uml-dirs.patch
@@ -815,6 +827,10 @@ fi
 %endif
 
 %changelog
+* Mon Oct 19 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-13
+- Misc fixes to qemu machine types handling
+- A couple of XML formatting fixes
+
 * Tue Oct 13 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-12
 - Fix restore of qemu guest using raw save format (#523158)
 

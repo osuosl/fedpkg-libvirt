@@ -1,0 +1,42 @@
+From bb64cc4cbe5d3c69057f63be2c1acaca72038e5a Mon Sep 17 00:00:00 2001
+From: Mark McLoughlin <markmc@redhat.com>
+Date: Thu, 15 Oct 2009 12:09:17 +0100
+Subject: [PATCH] Don't copy old machines from a domain which has none
+
+If the the qemu and kvm binaries are the same, we don't include machine
+types in the kvm domain info.
+
+However, the code which refreshes the machine types info from the
+previous capabilities structure first looks at the kvm domain's info,
+finds it matches and then copies the empty machine types list over
+for the top-level qemu domain.
+
+That doesn't make sense, we shouldn't copy an empty machin types list.
+
+* src/qemu/qemu_conf.c: qemudGetOldMachinesFromInfo(): don't copy an
+  empty machine types list.
+
+(cherry picked from commit 2210f8a3a8e2774ca4fb8b42e21899e5b85ca913)
+
+Fedora-patch: libvirt-qemu-machine-type-fixes2.patch
+---
+ src/qemu_conf.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
+
+diff --git a/src/qemu_conf.c b/src/qemu_conf.c
+index 0dd0624..34a7fe1 100644
+--- a/src/qemu_conf.c
++++ b/src/qemu_conf.c
+@@ -505,6 +505,9 @@ qemudGetOldMachinesFromInfo(virCapsGuestDomainInfoPtr info,
+     virCapsGuestMachinePtr *list;
+     int i;
+ 
++    if (!info->nmachines)
++        return 0;
++
+     if (!info->emulator || !STREQ(emulator, info->emulator))
+         return 0;
+ 
+-- 
+1.6.2.5
+
