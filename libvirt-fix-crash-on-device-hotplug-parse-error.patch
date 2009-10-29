@@ -1,0 +1,31 @@
+From a5fa9f63fcffbf70465386672f24edac439866b9 Mon Sep 17 00:00:00 2001
+From: Daniel P. Berrange <berrange@redhat.com>
+Date: Thu, 24 Sep 2009 15:42:25 +0100
+Subject: [PATCH] Fix crash in device hotplug cleanup code
+
+* src/qemu/qemu_driver.c: Fix crash in scenario where XML
+  parsing of hotplugged device failed & thus 'dev' is NULL
+
+(cherry picked from commit 879cd8cc2ba00f795913f296556e05f25afa7877)
+
+Fedora-patch: libvirt-fix-crash-on-device-hotplug-parse-error.patch
+---
+ src/qemu_driver.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/src/qemu_driver.c b/src/qemu_driver.c
+index 0ce403c..c956258 100644
+--- a/src/qemu_driver.c
++++ b/src/qemu_driver.c
+@@ -5912,7 +5912,7 @@ cleanup:
+     if (cgroup)
+         virCgroupFree(&cgroup);
+ 
+-    if (ret < 0) {
++    if (ret < 0 && dev != NULL) {
+         if (qemuDomainSetDeviceOwnership(dom->conn, driver, dev, 1) < 0)
+             VIR_WARN0("Fail to restore disk device ownership");
+         virDomainDeviceDefFree(dev);
+-- 
+1.6.2.5
+

@@ -1,0 +1,103 @@
+From cab81502320d97dac4c5c12e7496f30896709c49 Mon Sep 17 00:00:00 2001
+From: Matthias Bolte <matthias.bolte@googlemail.com>
+Date: Tue, 22 Sep 2009 15:12:48 +0200
+Subject: [PATCH] Fix xen driver refcounting.
+
+The commit cb51aa48a777ddae6997faa9f28350cb62655ffd "Fix up connection
+reference counting." changed the driver closing and virConnectPtr
+unref-logic in virConnectClose().
+
+Before this commit virConnectClose() closed all drivers of the given
+virConnectPtr and virUnrefConnect()'ed it afterwards. After this
+commit the driver-closing is done in virUnrefConnect() if and only if
+the ref-count of the virConnectPtr dropped to zero.
+
+This change in execution order leads to a virConnectPtr leak, at least
+for connections to Xen.
+
+The relevant call sequences:
+
+virConnectOpen() -> xenUnifiedOpen() ...
+
+... xenInotifyOpen() -> virConnectRef(conn)
+
+... xenStoreOpen() -> xenStoreAddWatch() -> conn->refs++
+
+virConnectClose() -> xenUnifiedClose() ...
+
+... xenInotifyClose() -> virUnrefConnect(conn)
+
+... xenStoreClose() -> xenStoreRemoveWatch() -> virUnrefConnect(conn)
+
+Before the commit this additional virConnectRef/virUnrefConnect calls
+where no problem, because virConnectClose() closed the drivers
+explicitly and the additional refs added by the Xen subdrivers were
+removed properly. After the commit this additional refs result in a
+virConnectPtr leak (including a leak of the hypercall file handle;
+that's how I noticed this problem), because now the drivers are only
+close if and only if the ref-count drops to zero, but this cannot
+happen anymore, because the additional refs from the Xen subdrivers
+would only be removed if the drivers get closed, but that doesn't
+happen because the ref-count cannot drop to zero.
+
+The fix for this problem is simple: remove the
+virConnectRef/virUnrefConnect calls from the Xen subdrivers (see
+attached patch). Maybe someone could explain why the Xen Inotify and
+Xen Store driver do this extra ref-counting, but none of the other Xen
+subdrivers. It seems unnecessary to me and can be removed without
+problems.
+
+Signed-off-by: Chris Lalancette <clalance@redhat.com>
+
+(cherry picked from commit 6ed7374c5a6c6a2b1b1801d7d041dc7f09748592)
+
+Fedora-patch: libvirt-fix-xen-driver-refcounting.patch
+---
+ src/xen_inotify.c |    2 --
+ src/xs_internal.c |    3 ---
+ 2 files changed, 0 insertions(+), 5 deletions(-)
+
+diff --git a/src/xen_inotify.c b/src/xen_inotify.c
+index e312b9e..ecaefaf 100644
+--- a/src/xen_inotify.c
++++ b/src/xen_inotify.c
+@@ -463,7 +463,6 @@ xenInotifyOpen(virConnectPtr conn ATTRIBUTE_UNUSED,
+         DEBUG0("Failed to add inotify handle, disabling events");
+     }
+ 
+-    virConnectRef(conn);
+     return 0;
+ }
+ 
+@@ -486,7 +485,6 @@ xenInotifyClose(virConnectPtr conn)
+     if (priv->inotifyWatch != -1)
+         virEventRemoveHandle(priv->inotifyWatch);
+     close(priv->inotifyFD);
+-    virUnrefConnect(conn);
+ 
+     return 0;
+ }
+diff --git a/src/xs_internal.c b/src/xs_internal.c
+index 1f54b1f..a18dcad 100644
+--- a/src/xs_internal.c
++++ b/src/xs_internal.c
+@@ -1139,8 +1139,6 @@ int xenStoreAddWatch(virConnectPtr conn,
+     list->watches[n] = watch;
+     list->count++;
+ 
+-    conn->refs++;
+-
+     return xs_watch(priv->xshandle, watch->path, watch->token);
+ }
+ 
+@@ -1190,7 +1188,6 @@ int xenStoreRemoveWatch(virConnectPtr conn,
+                 ; /* Failure to reduce memory allocation isn't fatal */
+             }
+             list->count--;
+-            virUnrefConnect(conn);
+             return 0;
+         }
+     }
+-- 
+1.6.2.5
+

@@ -199,6 +199,18 @@ Patch17: libvirt-qemu-machine-type-fixes2.patch
 Patch18: libvirt-storage-iscsi-auth-xml-formatting.patch
 Patch19: libvirt-network-delay-attribute-formatting.patch
 
+# Fix xen driver recounting (#531429)
+Patch20: libvirt-fix-xen-driver-refcounting.patch
+
+# Fix crash on virsh error (#531429)
+Patch21: libvirt-double-free-on-virsh-error.patch
+
+# Fix segfault where XML parsing fails in qemu disk hotplug
+Patch22: libvirt-fix-crash-on-device-hotplug-parse-error.patch
+
+# Fix segfault where interface target device name is ommitted (#523418)
+Patch23: libvirt-fix-crash-on-missing-iface-target-dev.patch
+
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python-devel
@@ -433,6 +445,10 @@ of recent versions of Linux (and other OSes).
 %patch17 -p1
 %patch18 -p1
 %patch19 -p1
+%patch20 -p1
+%patch21 -p1
+%patch22 -p1
+%patch23 -p1
 
 %build
 # Needed for libvirt-logrotate-create-lxc-uml-dirs.patch
@@ -829,6 +845,10 @@ fi
 %changelog
 * Thu Oct 29 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-14
 - Make libvirt-devel require libvirt-client, not libvirt
+- Fix xen driver recounting (#531429)
+- Fix crash on virsh error (#531429)
+- Fix segfault where XML parsing fails in qemu disk hotplug
+- Fix segfault where interface target device name is ommitted (#523418)
 
 * Mon Oct 19 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-13
 - Misc fixes to qemu machine types handling
