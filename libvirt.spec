@@ -151,7 +151,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.7.1
-Release: 14%{?dist}%{?extra_release}
+Release: 15%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -210,6 +210,9 @@ Patch22: libvirt-fix-crash-on-device-hotplug-parse-error.patch
 
 # Fix segfault where interface target device name is ommitted (#523418)
 Patch23: libvirt-fix-crash-on-missing-iface-target-dev.patch
+
+# Avoid compressing small log files (#531030)
+Patch24: libvirt-logrotate-avoid-compressing-small-logs.patch
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
@@ -449,6 +452,7 @@ of recent versions of Linux (and other OSes).
 %patch21 -p1
 %patch22 -p1
 %patch23 -p1
+%patch24 -p1
 
 %build
 # Needed for libvirt-logrotate-create-lxc-uml-dirs.patch
@@ -843,6 +847,9 @@ fi
 %endif
 
 %changelog
+* Thu Oct 29 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-15
+- Avoid compressing small log files (#531030)
+
 * Thu Oct 29 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-14
 - Make libvirt-devel require libvirt-client, not libvirt
 - Fix xen driver recounting (#531429)
