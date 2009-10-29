@@ -151,7 +151,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.7.1
-Release: 13%{?dist}%{?extra_release}
+Release: 14%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -388,7 +388,7 @@ virtualization capabilities of recent versions of Linux (and other OSes).
 %package devel
 Summary: Libraries, includes, etc. to compile with the libvirt library
 Group: Development/Libraries
-Requires: libvirt = %{version}-%{release}
+Requires: libvirt-client = %{version}-%{release}
 Requires: pkgconfig
 %if %{with_xen}
 Requires: xen-devel
@@ -827,6 +827,9 @@ fi
 %endif
 
 %changelog
+* Thu Oct 29 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-14
+- Make libvirt-devel require libvirt-client, not libvirt
+
 * Mon Oct 19 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-13
 - Misc fixes to qemu machine types handling
 - A couple of XML formatting fixes
