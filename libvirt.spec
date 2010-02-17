@@ -170,7 +170,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.7.6
-Release: 2%{?dist}%{?extra_release}
+Release: 3%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -822,7 +822,7 @@ fi
 %endif
 
 %changelog
-* Tue Feb 16 2010 Adam Jackson <ajax@redhat.com> 0.7.6-2
+* Tue Feb 16 2010 Adam Jackson <ajax@redhat.com> 0.7.6-3
 - libvirt-0.7.6-add-needed.patch: Fix FTBFS from --no-add-needed
 - Add BuildRequires: xmlrpc-c-client for libxmlrpc_client.so
 
