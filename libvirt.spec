@@ -399,7 +399,7 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
-%patch0 -p1 -b .add-needed
+%patch0 -p1 -b .jx
 
 %build
 %if ! %{with_xen}

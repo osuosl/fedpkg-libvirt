@@ -1,12 +1,13 @@
 diff -up libvirt-0.7.6/tests/Makefile.am.jx libvirt-0.7.6/tests/Makefile.am
 --- libvirt-0.7.6/tests/Makefile.am.jx	2010-01-21 09:32:37.000000000 -0500
-+++ libvirt-0.7.6/tests/Makefile.am	2010-02-16 18:49:36.000000000 -0500
-@@ -317,7 +317,7 @@ conftest_LDADD = $(LDADDS)
++++ libvirt-0.7.6/tests/Makefile.am	2010-02-17 10:32:27.000000000 -0500
+@@ -37,7 +37,8 @@ LDADDS = \
+ 	../src/libvirt_test.la \
+ 	../gnulib/lib/libgnu.la \
+ 	$(LIBSOCKET) \
+-        $(COVERAGE_LDFLAGS)
++        $(COVERAGE_LDFLAGS) \
++	-ldl
  
- nodeinfotest_SOURCES = \
- 	nodeinfotest.c testutils.h testutils.c
--nodeinfotest_LDADD = $(LDADDS)
-+nodeinfotest_LDADD = $(LDADDS) -ldl
- 
- statstest_SOURCES = \
- 	statstest.c testutils.h testutils.c
+ qemuhelpdata = \
+ 	kvm-74 \
