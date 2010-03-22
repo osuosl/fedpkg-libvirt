@@ -169,10 +169,14 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.7.7
-Release: 1%{?dist}%{?extra_release}
+Release: 2%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
+# Fix USB devices by product with security enabled (bz 574136)
+Patch1: %{name}-%{version}-fix-usb-product.patch
+# Set kernel/initrd in security driver, fixes some URL installs (bz 566425)
+Patch2: %{name}-%{version}-set-kernel-perms.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python-devel
@@ -394,6 +398,8 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+%patch1 -p1
+%patch2 -p1
 
 %build
 %if ! %{with_xen}
@@ -815,6 +821,10 @@ fi
 %endif
 
 %changelog
+* Mon Mar 22 2010 Cole Robinson <crobinso@redhat.com> - 0.7.7-2.fc13
+- Fix USB devices by product with security enabled (bz 574136)
+- Set kernel/initrd in security driver, fixes some URL installs (bz 566425)
+
 * Fri Mar  5 2010 Daniel Veillard <veillard@redhat.com> - 0.7.7-1
 - macvtap support
 - async job handling
