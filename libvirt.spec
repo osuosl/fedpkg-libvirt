@@ -169,7 +169,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.7.7
-Release: 2%{?dist}%{?extra_release}
+Release: 3%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -177,6 +177,8 @@ Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
 Patch1: %{name}-%{version}-fix-usb-product.patch
 # Set kernel/initrd in security driver, fixes some URL installs (bz 566425)
 Patch2: %{name}-%{version}-set-kernel-perms.patch
+# Fix slow storage volume allocation (bz 582356)
+Patch3: %{name}-%{version}-fix-slow-dsync.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python-devel
@@ -400,6 +402,7 @@ of recent versions of Linux (and other OSes).
 %setup -q
 %patch1 -p1
 %patch2 -p1
+%patch3 -p1
 
 %build
 %if ! %{with_xen}
@@ -821,6 +824,9 @@ fi
 %endif
 
 %changelog
+* Tue Apr 20 2010 Cole Robinson <crobinso@redhat.com> - 0.7.7-3.fc13
+- Fix slow storage volume allocation (bz 582356)
+
 * Mon Mar 22 2010 Cole Robinson <crobinso@redhat.com> - 0.7.7-2.fc13
 - Fix USB devices by product with security enabled (bz 574136)
 - Set kernel/initrd in security driver, fixes some URL installs (bz 566425)

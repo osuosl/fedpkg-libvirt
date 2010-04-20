@@ -1,0 +1,41 @@
+From e3c36a2575bc88a16d776693dc39ea01c780b406 Mon Sep 17 00:00:00 2001
+From: Jiri Denemark <jdenemar@redhat.com>
+Date: Tue, 16 Mar 2010 16:03:59 +0100
+Subject: [PATCH] Use fsync() at the end of file allocation instead of O_DSYNC
+
+Instead of opening storage file with O_DSYNC, make sure data are written
+to a disk only before we claim allocation has finished.
+---
+ src/storage/storage_backend.c |    9 ++++++++-
+ 1 files changed, 8 insertions(+), 1 deletions(-)
+
+diff --git a/src/storage/storage_backend.c b/src/storage/storage_backend.c
+index ec9fc43..7294a00 100644
+--- a/src/storage/storage_backend.c
++++ b/src/storage/storage_backend.c
+@@ -331,6 +331,13 @@ static int createRawFileOpHook(int fd, void *data) {
+                 goto cleanup;
+             }
+         }
++
++        if (fsync(fd) < 0) {
++            ret = errno;
++            virReportSystemError(errno, _("cannot sync data to file '%s'"),
++                                 hdata->vol->target.path);
++            goto cleanup;
++        }
+     }
+ 
+ cleanup:
+@@ -359,7 +366,7 @@ virStorageBackendCreateRaw(virConnectPtr conn ATTRIBUTE_UNUSED,
+     gid_t gid = (vol->target.perms.gid == -1) ? getgid() : vol->target.perms.gid;
+ 
+     if ((createstat = virFileOperation(vol->target.path,
+-                                       O_RDWR | O_CREAT | O_EXCL | O_DSYNC,
++                                       O_RDWR | O_CREAT | O_EXCL,
+                                        vol->target.perms.mode, uid, gid,
+                                        createRawFileOpHook, &hdata,
+                                        VIR_FILE_OP_FORCE_PERMS |
+-- 
+1.6.6.1
+
