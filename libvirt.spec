@@ -151,7 +151,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.7.1
-Release: 15%{?dist}%{?extra_release}
+Release: 16%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -213,6 +213,16 @@ Patch23: libvirt-fix-crash-on-missing-iface-target-dev.patch
 
 # Avoid compressing small log files (#531030)
 Patch24: libvirt-logrotate-avoid-compressing-small-logs.patch
+# Fix crash with invalid QEmu URI (bz 566070)
+Patch25: %{name}-%{version}-qemu-uri-crash.patch
+# Fix VNC TLS crash (bz 544305)
+Patch26: %{name}-%{version}-gcrypt-thread-init.patch
+# Fix USB devices with high bus/addr values (bz 542639)
+Patch27: %{name}-%{version}-fix-usb-busaddr.patch
+# Fix save/restore with non-root guests (bz 534143, bz 532654)
+Patch28: %{name}-%{version}-fix-selinux-save.patch
+# Fix USB devices attached via virt-manager (bz 537227)
+Patch29: %{name}-%{version}-fix-usb-product.patch
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
@@ -453,6 +463,11 @@ of recent versions of Linux (and other OSes).
 %patch22 -p1
 %patch23 -p1
 %patch24 -p1
+%patch25 -p1
+%patch26 -p1
+%patch27 -p1
+%patch28 -p1
+%patch29 -p1
 
 %build
 # Needed for libvirt-logrotate-create-lxc-uml-dirs.patch
@@ -847,6 +862,13 @@ fi
 %endif
 
 %changelog
+* Mon May 17 2010 Cole Robinson <crobinso@redhat.com> - 0.7.1-16.fc12
+- Fix crash with invalid QEmu URI (bz 566070)
+- Fix VNC TLS crash (bz 544305)
+- Fix USB devices with high bus/addr values (bz 542639)
+- Fix save/restore with non-root guests (bz 534143, bz 532654)
+- Fix USB devices attached via virt-manager (bz 537227)
+
 * Thu Oct 29 2009 Mark McLoughlin <markmc@redhat.com> - 0.7.1-15
 - Avoid compressing small log files (#531030)
 
