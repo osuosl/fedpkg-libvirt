@@ -1,0 +1,132 @@
+commit c4896d378b921ba6471562d7b17641be121c19d6
+Author: Daniel P. Berrange <berrange@redhat.com>
+Date:   Thu Apr 15 11:35:07 2010 +0100
+
+    Fix CDROM media change for QEMU when using -device syntax
+    
+    Disk devices in QEMU have two parts, the guest device and the host
+    backend driver. Historically these two parts have had the same
+    "unique" name. With the switch to using -device though, they now
+    have separate names. Thus when changing CDROM media, for guests
+    using -device syntax, we need to prepend the QEMU_DRIVE_HOST_PREFIX
+    constant
+    
+    * src/qemu/qemu_conf.c, src/qemu/qemu_conf.h: Add helper function
+      qemuDeviceDriveHostAlias() for building a host backend alias
+    * src/qemu/qemu_driver.c: Use qemuDeviceDriveHostAlias() to determine
+      the host backend alias for performing eject/change commands in the
+      monitor
+
+diff --git a/src/qemu/qemu_conf.c b/src/qemu/qemu_conf.c
+index 1a8b4aa..0cbedf2 100644
+--- a/src/qemu/qemu_conf.c
++++ b/src/qemu/qemu_conf.c
+@@ -1699,6 +1699,26 @@ static int qemuAssignDeviceDiskAliasLegacy(virDomainDiskDefPtr disk)
+ }
+ 
+ 
++char *qemuDeviceDriveHostAlias(virDomainDiskDefPtr disk,
++                               unsigned long long qemudCmdFlags)
++{
++    char *ret;
++
++    if (qemudCmdFlags & QEMUD_CMD_FLAG_DEVICE) {
++        if (virAsprintf(&ret, "%s%s", QEMU_DRIVE_HOST_PREFIX, disk->info.alias) < 0) {
++            virReportOOMError();
++            return NULL;
++        }
++    } else {
++        if (!(ret = strdup(disk->info.alias))) {
++            virReportOOMError();
++            return NULL;
++        }
++    }
++    return ret;
++}
++
++
+ /* Names used before -drive supported the id= option */
+ static int qemuAssignDeviceDiskAliasFixed(virDomainDiskDefPtr disk)
+ {
+diff --git a/src/qemu/qemu_conf.h b/src/qemu/qemu_conf.h
+index 574709e..b2820f0 100644
+--- a/src/qemu/qemu_conf.h
++++ b/src/qemu/qemu_conf.h
+@@ -220,6 +220,9 @@ char * qemuBuildNicStr(virDomainNetDefPtr net,
+ char * qemuBuildNicDevStr(virDomainNetDefPtr net,
+                           int vlan);
+ 
++char *qemuDeviceDriveHostAlias(virDomainDiskDefPtr disk,
++                               unsigned long long qemudCmdFlags);
++
+ /* Both legacy & current support */
+ char *qemuBuildDriveStr(virDomainDiskDefPtr disk,
+                         int bootable,
+diff --git a/src/qemu/qemu_driver.c b/src/qemu/qemu_driver.c
+index 0189dcf..7d2f3ef 100644
+--- a/src/qemu/qemu_driver.c
++++ b/src/qemu/qemu_driver.c
+@@ -6552,11 +6552,13 @@ cleanup:
+ 
+ static int qemudDomainChangeEjectableMedia(struct qemud_driver *driver,
+                                            virDomainObjPtr vm,
+-                                           virDomainDiskDefPtr disk)
++                                           virDomainDiskDefPtr disk,
++                                           unsigned long long qemuCmdFlags)
+ {
+     virDomainDiskDefPtr origdisk = NULL;
+     int i;
+     int ret;
++    char *driveAlias = NULL;
+ 
+     origdisk = NULL;
+     for (i = 0 ; i < vm->def->ndisks ; i++) {
+@@ -6594,6 +6596,9 @@ static int qemudDomainChangeEjectableMedia(struct qemud_driver *driver,
+         driver->securityDriver->domainSetSecurityImageLabel(vm, disk) < 0)
+         return -1;
+ 
++    if (!(driveAlias = qemuDeviceDriveHostAlias(origdisk, qemuCmdFlags)))
++        goto error;
++
+     qemuDomainObjPrivatePtr priv = vm->privateData;
+     qemuDomainObjEnterMonitorWithDriver(driver, vm);
+     if (disk->src) {
+@@ -6605,10 +6610,10 @@ static int qemudDomainChangeEjectableMedia(struct qemud_driver *driver,
+                 format = origdisk->driverType;
+         }
+         ret = qemuMonitorChangeMedia(priv->mon,
+-                                     origdisk->info.alias,
++                                     driveAlias,
+                                      disk->src, format);
+     } else {
+-        ret = qemuMonitorEjectMedia(priv->mon, origdisk->info.alias);
++        ret = qemuMonitorEjectMedia(priv->mon, driveAlias);
+     }
+     qemuDomainObjExitMonitorWithDriver(driver, vm);
+ 
+@@ -6625,11 +6630,14 @@ static int qemudDomainChangeEjectableMedia(struct qemud_driver *driver,
+     disk->src = NULL;
+     origdisk->type = disk->type;
+ 
++    VIR_FREE(driveAlias);
++
+     virDomainDiskDefFree(disk);
+ 
+     return ret;
+ 
+ error:
++    VIR_FREE(driveAlias);
+     if (driver->securityDriver &&
+         driver->securityDriver->domainRestoreSecurityImageLabel &&
+         driver->securityDriver->domainRestoreSecurityImageLabel(vm, disk) < 0)
+@@ -7434,7 +7442,9 @@ static int qemudDomainAttachDevice(virDomainPtr dom,
+         switch (dev->data.disk->device) {
+         case VIR_DOMAIN_DISK_DEVICE_CDROM:
+         case VIR_DOMAIN_DISK_DEVICE_FLOPPY:
+-            ret = qemudDomainChangeEjectableMedia(driver, vm, dev->data.disk);
++            ret = qemudDomainChangeEjectableMedia(driver, vm,
++                                                  dev->data.disk,
++                                                  qemuCmdFlags);
+             if (ret == 0)
+                 dev->data.disk = NULL;
+             break;

@@ -169,7 +169,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.7.7
-Release: 3%{?dist}%{?extra_release}
+Release: 4%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -179,6 +179,16 @@ Patch1: %{name}-%{version}-fix-usb-product.patch
 Patch2: %{name}-%{version}-set-kernel-perms.patch
 # Fix slow storage volume allocation (bz 582356)
 Patch3: %{name}-%{version}-fix-slow-dsync.patch
+# Fix nodedev XML conversion errors (bz 591262)
+Patch4: %{name}-%{version}-nodedev-conversions.patch
+# Fix PCI xml decimal parsing (bz 582752)
+Patch5: %{name}-%{version}-pci-decimal-parsing.patch
+# Fix CDROM media connect/eject (bz 582005)
+Patch6: %{name}-%{version}-fix-cdrom-change.patch
+# Always report qemu startup output on error (bz 581381)
+Patch7: %{name}-%{version}-qemu-startup-output.patch
+# Fix crash from 'virsh dominfo' if secdriver disabled (bz 581166)
+Patch8: %{name}-%{version}-no-secdriver-crash.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python-devel
@@ -403,6 +413,11 @@ of recent versions of Linux (and other OSes).
 %patch1 -p1
 %patch2 -p1
 %patch3 -p1
+%patch4 -p1
+%patch5 -p1
+%patch6 -p1
+%patch7 -p1
+%patch8 -p1
 
 %build
 %if ! %{with_xen}
@@ -824,6 +839,13 @@ fi
 %endif
 
 %changelog
+* Tue May 18 2010 Cole Robinson <crobinso@redhat.com> - 0.7.7-4.fc13
+- Fix nodedev XML conversion errors (bz 591262)
+- Fix PCI xml decimal parsing (bz 582752)
+- Fix CDROM media connect/eject (bz 582005)
+- Always report qemu startup output on error (bz 581381)
+- Fix crash from 'virsh dominfo' if secdriver disabled (bz 581166)
+
 * Tue Apr 20 2010 Cole Robinson <crobinso@redhat.com> - 0.7.7-3.fc13
 - Fix slow storage volume allocation (bz 582356)
 
