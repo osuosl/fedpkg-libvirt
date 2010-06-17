@@ -151,7 +151,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.7.1
-Release: 17%{?dist}%{?extra_release}
+Release: 18%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -892,6 +892,9 @@ fi
 %endif
 
 %changelog
+* Thu Jun 17 2010 Cole Robinson <crobinso@redhat.com> - 0.7.1-18.fc12
+- Actually apply all previous patches
+
 * Tue Jun 15 2010 Cole Robinson <crobinso@redhat.com> - 0.7.1-17.fc12
 - Fix attach-device crash on cgroup cleanup (bz 556791)
 - Fix crash on bad LXC URI (bz 554191)
