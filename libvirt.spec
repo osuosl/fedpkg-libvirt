@@ -491,7 +491,7 @@ of recent versions of Linux (and other OSes).
 %patch30 -p1
 %patch31 -p1
 %patch32 -p1
-#%patch33 -p1
+%patch33 -p1
 %patch34 -p1
 %patch35 -p1
 %patch36 -p1
