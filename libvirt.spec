@@ -169,7 +169,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.7.7
-Release: 4%{?dist}%{?extra_release}
+Release: 5%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -189,6 +189,22 @@ Patch6: %{name}-%{version}-fix-cdrom-change.patch
 Patch7: %{name}-%{version}-qemu-startup-output.patch
 # Fix crash from 'virsh dominfo' if secdriver disabled (bz 581166)
 Patch8: %{name}-%{version}-no-secdriver-crash.patch
+# Add qemu.conf options for audio workaround
+Patch9: %{name}-%{version}-audio-config.patch
+# Fix parsing certain USB sysfs files (bz 598272)
+Patch10: %{name}-%{version}-fix-usb-parsing.patch
+# Sanitize pool target paths (bz 494005)
+Patch11: %{name}-%{version}-sanitize-pool.patch
+# Add qemu.conf for clear emulator capabilities
+Patch12: %{name}-%{version}-caps-option.patch
+# Prevent libvirtd inside a VM from breaking network access (bz 235961)
+Patch13: %{name}-%{version}-network-collision.patch
+# Mention --all in 'virsh list' docs (bz 575512)
+Patch14: %{name}-%{version}-man-page-list.patch
+# Initscript fixes (bz 565238)
+Patch15: %{name}-%{version}-init-fixes.patch
+# List wireless interfaces via nodedev-list (bz 596928)
+Patch16: %{name}-%{version}-udev-wireless.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python-devel
@@ -418,6 +434,14 @@ of recent versions of Linux (and other OSes).
 %patch6 -p1
 %patch7 -p1
 %patch8 -p1
+%patch9 -p1
+%patch10 -p1
+%patch11 -p1
+%patch12 -p1
+%patch13 -p1
+%patch14 -p1
+%patch15 -p1
+%patch16 -p1
 
 %build
 %if ! %{with_xen}
@@ -839,6 +863,16 @@ fi
 %endif
 
 %changelog
+* Thu Jun 17 2010 Cole Robinson <crobinso@redhat.com> - 0.7.7-5.fc13
+- Add qemu.conf options for audio workaround
+- Fix parsing certain USB sysfs files (bz 598272)
+- Sanitize pool target paths (bz 494005)
+- Add qemu.conf for clear emulator capabilities
+- Prevent libvirtd inside a VM from breaking network access (bz 235961)
+- Mention --all in 'virsh list' docs (bz 575512)
+- Initscript fixes (bz 565238)
+- List wireless interfaces via nodedev-list (bz 596928)
+
 * Tue May 18 2010 Cole Robinson <crobinso@redhat.com> - 0.7.7-4.fc13
 - Fix nodedev XML conversion errors (bz 591262)
 - Fix PCI xml decimal parsing (bz 582752)

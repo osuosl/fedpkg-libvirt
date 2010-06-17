@@ -1,0 +1,65 @@
+commit e5f31f461f63bbad211e84b810d6ba43a705f9dd
+Author: Justin Clift <justin@salasaga.org>
+Date:   Sun May 30 13:28:42 2010 +1000
+
+    Trivial virsh.pod additions --all for "list" command and similar
+    
+    This is just a trivial patch to virsh.pod (from git master). It adds the
+    following pieces to the virsh man page:
+    
+      + Shows the --inactive and --all optional parameters for the list
+        command.
+    
+        Closes Bugzilla #575512, reported by Renich Bon Ciric
+        https://bugzilla.redhat.com/show_bug.cgi?id=575512
+    
+      + Corrects the existing description of the list command, to now say
+        that only running domains are listed if no domains are specified.
+    
+        The man page up until this point has said all domains are listed if
+        no domains are specified, which is incorrect.
+    
+      + Adds the "shut off" state to the list of states for the list
+        command.
+    
+      + Adds a missing =back around line 755, that pod2man was complaining
+        was missing.
+
+diff --git a/tools/virsh.pod b/tools/virsh.pod
+index cf7585d..495bb46 100644
+--- a/tools/virsh.pod
++++ b/tools/virsh.pod
+@@ -156,10 +156,10 @@ description see:
+   L<http://libvirt.org/formatcaps.html>
+ The XML also show the NUMA topology information if available.
+ 
+-=item B<list>
++=item B<list> optional I<--inactive> I<--all>
+ 
+ Prints information about one or more domains.  If no domains are
+-specified it prints out information about all domains.
++specified it prints out information about running domains.
+ 
+ An example format for the list is as follows:
+ 
+@@ -177,7 +177,7 @@ State is the run state (see below).
+ 
+ B<STATES>
+ 
+-The State field lists 6 states for a domain, and which ones the
++The State field lists 7 states for a domain, and which ones the
+ current domain is in.
+ 
+ =over 4
+@@ -205,6 +205,11 @@ The domain is in the process of shutting down, i.e. the guest operating system
+ has been notified and should be in the process of stopping its operations
+ gracefully.
+ 
++=item B<shut off>
++
++The domain is not running.  Usually this indicates the domain has been
++shut down completely, or has not been started.
++
+ =item B<crashed>
+ 
+ The domain has crashed, which is always a violent ending.  Usually
