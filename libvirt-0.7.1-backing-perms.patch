@@ -1,0 +1,99 @@
+--- libvirt-0.7.1/src/qemu_driver.c	2010-06-17 11:30:54.501983000 -0400
++++ new/src/qemu_driver.c	2010-06-17 11:20:13.032900000 -0400
+@@ -69,7 +69,7 @@
+ #include "hostusb.h"
+ #include "security.h"
+ #include "cgroup.h"
+-
++#include "storage_file.h"
+ 
+ #define VIR_FROM_THIS VIR_FROM_QEMU
+ 
+@@ -1895,6 +1895,7 @@ static int qemuDomainSetDeviceOwnership(
+ {
+     uid_t uid;
+     gid_t gid;
++    const char *path;
+ 
+     if (!driver->privileged)
+         return 0;
+@@ -1912,6 +1913,35 @@ static int qemuDomainSetDeviceOwnership(
+             (def->data.disk->readonly || def->data.disk->shared))
+             return 0;
+ 
++        if (!def->data.disk->src)
++            return 0;
++
++        path = def->data.disk->src;
++        do {
++            virStorageFileMetadata meta;
++            int ret;
++
++            memset(&meta, 0, sizeof(meta));
++
++            ret = virStorageFileGetMetadata(conn, path, &meta);
++
++            if (path != def->data.disk->src)
++                VIR_FREE(path);
++            path = NULL;
++
++            if (ret < 0)
++                return -1;
++
++            if (meta.backingStore != NULL &&
++                qemuDomainSetFileOwnership(conn,
++                                           meta.backingStore, uid, gid) < 0) {
++                VIR_FREE(meta.backingStore);
++                return -1;
++            }
++
++            path = meta.backingStore;
++        } while (path != NULL);
++
+         return qemuDomainSetFileOwnership(conn, def->data.disk->src, uid, gid);
+ 
+     case VIR_DOMAIN_DEVICE_HOSTDEV:
+@@ -1929,6 +1959,7 @@ static int qemuDomainSetAllDeviceOwnersh
+     int i;
+     uid_t uid;
+     gid_t gid;
++    const char *path;
+ 
+     if (!driver->privileged)
+         return 0;
+@@ -1949,6 +1980,35 @@ static int qemuDomainSetAllDeviceOwnersh
+             (def->disks[i]->readonly || def->disks[i]->shared))
+             continue;
+ 
++        if (!def->disks[i]->src)
++            continue;
++
++        path = def->disks[i]->src;
++        do {
++            virStorageFileMetadata meta;
++            int ret;
++
++            memset(&meta, 0, sizeof(meta));
++
++            ret = virStorageFileGetMetadata(conn, path, &meta);
++
++            if (path != def->disks[i]->src)
++                VIR_FREE(path);
++            path = NULL;
++
++            if (ret < 0)
++                return -1;
++
++            if (meta.backingStore != NULL &&
++                qemuDomainSetFileOwnership(conn,
++                                           meta.backingStore, uid, gid) < 0) {
++                VIR_FREE(meta.backingStore);
++                return -1;
++            }
++
++            path = meta.backingStore;
++        } while (path != NULL);
++
+         if (qemuDomainSetFileOwnership(conn, def->disks[i]->src, uid, gid) < 0)
+             return -1;
+     }

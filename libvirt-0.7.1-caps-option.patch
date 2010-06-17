@@ -1,0 +1,82 @@
+diff -rup libvirt-0.7.1/src/qemu.conf new/src/qemu.conf
+--- libvirt-0.7.1/src/qemu.conf	2010-06-03 15:01:14.288848000 -0400
++++ new/src/qemu.conf	2010-06-03 15:04:05.062031000 -0400
+@@ -162,3 +162,12 @@
+ # QEMU_AUDIO_DRV environment variable when using VNC.
+ #
+ # vnc_allow_host_audio = 0
++
++# If clear_emulator_capabilities is enabled, libvirt will drop all
++# privileged capabilities of the QEmu/KVM emulator. This is enabled by
++# default.
++#
++# Warning: Disabling this option means that a compromised guest can
++# exploit the privileges and possibly do damage to the host.
++#
++# clear_emulator_capabilities = 1
+diff -rup libvirt-0.7.1/src/qemu_conf.c new/src/qemu_conf.c
+--- libvirt-0.7.1/src/qemu_conf.c	2010-06-03 15:01:14.302852000 -0400
++++ new/src/qemu_conf.c	2010-06-03 15:05:09.755183000 -0400
+@@ -98,7 +98,9 @@ int qemudLoadDriverConfig(struct qemud_d
+     char *group;
+     int i;
+ 
+-    /* Setup 2 critical defaults */
++    /* Setup critical defaults */
++    driver->clearEmulatorCapabilities = 1;
++
+     if (!(driver->vncListen = strdup("127.0.0.1"))) {
+         virReportOOMError(NULL);
+         return -1;
+@@ -322,6 +324,10 @@ int qemudLoadDriverConfig(struct qemud_d
+     CHECK_TYPE ("vnc_allow_host_audio", VIR_CONF_LONG);
+     if (p) driver->vncAllowHostAudio = p->l;
+ 
++    p = virConfGetValue (conf, "clear_emulator_capabilities");
++    CHECK_TYPE ("clear_emulator_capabilities", VIR_CONF_LONG);
++    if (p) driver->clearEmulatorCapabilities = p->l;
++
+     virConfFree (conf);
+     return 0;
+ }
+diff -rup libvirt-0.7.1/src/qemu_conf.h new/src/qemu_conf.h
+--- libvirt-0.7.1/src/qemu_conf.h	2010-06-03 15:01:14.306860000 -0400
++++ new/src/qemu_conf.h	2010-06-03 15:05:27.968796000 -0400
+@@ -111,6 +111,7 @@ struct qemud_driver {
+     char *hugepage_path;
+ 
+     unsigned int vncAllowHostAudio : 1;
++    unsigned int clearEmulatorCapabilities : 1;
+ 
+     virCapsPtr caps;
+ 
+diff -rup libvirt-0.7.1/src/qemu_driver.c new/src/qemu_driver.c
+--- libvirt-0.7.1/src/qemu_driver.c	2010-06-03 15:01:14.413848000 -0400
++++ new/src/qemu_driver.c	2010-06-03 15:06:08.186798000 -0400
+@@ -2063,7 +2063,7 @@ static int qemudStartVMDaemon(virConnect
+                               int stdin_fd) {
+     const char **argv = NULL, **tmp;
+     const char **progenv = NULL;
+-    int i, ret;
++    int i, ret, runflags;
+     struct stat sb;
+     int *tapfds = NULL;
+     int ntapfds = 0;
+@@ -2205,9 +2205,16 @@ static int qemudStartVMDaemon(virConnect
+     for (i = 0 ; i < ntapfds ; i++)
+         FD_SET(tapfds[i], &keepfd);
+ 
++    VIR_DEBUG("Clear emulator capabilities: %d",
++              driver->clearEmulatorCapabilities);
++    runflags = VIR_EXEC_NONBLOCK;
++    if (driver->clearEmulatorCapabilities) {
++        runflags |= VIR_EXEC_CLEAR_CAPS;
++    }
++
+     ret = virExecDaemonize(conn, argv, progenv, &keepfd, &child,
+                            stdin_fd, &logfile, &logfile,
+-                           VIR_EXEC_NONBLOCK | VIR_EXEC_CLEAR_CAPS,
++                           runflags,
+                            qemudSecurityHook, &hookData,
+                            pidfile);
+     VIR_FREE(pidfile);

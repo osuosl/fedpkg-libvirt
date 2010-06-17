@@ -1,0 +1,13 @@
+diff -rup libvirt-0.7.1/src/lxc_driver.c new/src/lxc_driver.c
+--- libvirt-0.7.1/src/lxc_driver.c	2009-09-10 09:45:00.000000000 -0400
++++ new/src/lxc_driver.c	2010-06-03 15:03:11.524069000 -0400
+@@ -96,7 +96,8 @@ static virDrvOpenStatus lxcOpen(virConne
+             return VIR_DRV_OPEN_DECLINED;
+ 
+         /* If path isn't '/' then they typoed, tell them correct path */
+-        if (STRNEQ(conn->uri->path, "/")) {
++        if (conn->uri->path != NULL &&
++            STRNEQ(conn->uri->path, "/")) {
+             lxcError(conn, NULL, VIR_ERR_INTERNAL_ERROR,
+                      _("unexpected LXC URI path '%s', try lxc:///"),
+                      conn->uri->path);

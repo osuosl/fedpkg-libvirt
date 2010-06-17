@@ -1,0 +1,126 @@
+diff -rup libvirt-0.7.1/src/network_driver.c new/src/network_driver.c
+--- libvirt-0.7.1/src/network_driver.c	2009-09-15 03:49:04.000000000 -0400
++++ new/src/network_driver.c	2010-06-15 13:33:01.900912000 -0400
+@@ -43,6 +43,8 @@
+ #include <stdio.h>
+ #include <sys/wait.h>
+ #include <sys/ioctl.h>
++#include <netinet/in.h>
++#include <arpa/inet.h>
+ 
+ #include "virterror_internal.h"
+ #include "datatypes.h"
+@@ -843,6 +845,102 @@ cleanup:
+     return ret;
+ }
+ 
++#define PROC_NET_ROUTE "/proc/net/route"
++
++static int networkCheckRouteCollision(virNetworkObjPtr network)
++{
++    int ret = -1, len;
++    char *cur, *buf = NULL;
++    enum {MAX_ROUTE_SIZE = 1024*64};
++    struct in_addr inaddress, innetmask;
++    unsigned int net_dest;
++
++    if (!network->def->ipAddress || !network->def->netmask)
++        return 0;
++
++    if (inet_pton(AF_INET, network->def->ipAddress, &inaddress) <= 0) {
++        networkReportError(NULL, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
++                           _("cannot parse IP address '%s'"),
++                           network->def->ipAddress);
++        goto error;
++    }
++    if (inet_pton(AF_INET, network->def->netmask, &innetmask) <= 0) {
++        networkReportError(NULL, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
++                           _("cannot parse netmask '%s'"),
++                           network->def->netmask);
++        goto error;
++    }
++
++    net_dest = (inaddress.s_addr & innetmask.s_addr);
++
++    /* Read whole routing table into memory */
++    if ((len = virFileReadAll(PROC_NET_ROUTE, MAX_ROUTE_SIZE, &buf)) < 0)
++        goto error;
++
++    /* Dropping the last character shouldn't hurt */
++    if (len > 0)
++        buf[len-1] = '\0';
++
++    VIR_DEBUG("%s output:\n%s", PROC_NET_ROUTE, buf);
++
++    if (!STRPREFIX (buf, "Iface"))
++        goto out;
++
++    /* First line is just headings, skip it */
++    cur = strchr(buf, '\n');
++    if (cur)
++        cur++;
++
++    while (cur) {
++        char iface[17], dest[128], mask[128];
++        unsigned int addr_val, mask_val;
++        int num;
++
++        /* NUL-terminate the line, so sscanf doesn't go beyond a newline.  */
++        char *nl = strchr(cur, '\n');
++        if (nl) {
++            *nl++ = '\0';
++        }
++
++        num = sscanf(cur, "%16s %127s %*s %*s %*s %*s %*s %127s",
++                     iface, dest, mask);
++        cur = nl;
++
++        if (num != 3) {
++            VIR_DEBUG("Failed to parse %s", PROC_NET_ROUTE);
++            continue;
++        }
++
++        if (virStrToLong_ui(dest, NULL, 16, &addr_val) < 0) {
++            VIR_DEBUG("Failed to convert network address %s to uint", dest);
++            continue;
++        }
++
++        if (virStrToLong_ui(mask, NULL, 16, &mask_val) < 0) {
++            VIR_DEBUG("Failed to convert network mask %s to uint", mask);
++            continue;
++        }
++
++        addr_val &= mask_val;
++
++        if ((net_dest == addr_val) &&
++            (innetmask.s_addr == mask_val)) {
++            networkReportError(NULL, NULL, NULL, VIR_ERR_INTERNAL_ERROR,
++                              _("Network %s/%s is already in use by "
++                                "interface %s"),
++                                network->def->ipAddress,
++                                network->def->netmask, iface);
++            goto error;
++        }
++    }
++
++out:
++    ret = 0;
++error:
++    VIR_FREE(buf);
++    return ret;
++}
++
+ static int networkStartNetworkDaemon(virConnectPtr conn,
+                                    struct network_driver *driver,
+                                    virNetworkObjPtr network) {
+@@ -854,6 +952,10 @@ static int networkStartNetworkDaemon(vir
+         return -1;
+     }
+ 
++    /* Check to see if network collides with an existing route */
++    if (networkCheckRouteCollision(network) < 0)
++        return -1;
++
+     if ((err = brAddBridge(driver->brctl, network->def->bridge))) {
+         virReportSystemError(conn, err,
+                              _("cannot create bridge '%s'"),

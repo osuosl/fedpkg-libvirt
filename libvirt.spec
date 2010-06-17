@@ -151,7 +151,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.7.1
-Release: 16%{?dist}%{?extra_release}
+Release: 17%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -223,6 +223,26 @@ Patch27: %{name}-%{version}-fix-usb-busaddr.patch
 Patch28: %{name}-%{version}-fix-selinux-save.patch
 # Fix USB devices attached via virt-manager (bz 537227)
 Patch29: %{name}-%{version}-fix-usb-product.patch
+# Fix attach-device crash on cgroup cleanup (bz 556791)
+Patch30: %{name}-%{version}-fix-cgroup-crash.patch
+# Fix crash on bad LXC URI (bz 554191)
+Patch31: %{name}-%{version}-lxc-uri-crash.patch
+# Add qemu.conf options for audio workaround
+Patch32: %{name}-%{version}-audio-config.patch
+# Fix permissions of storage backing stores (bz 579067)
+Patch33: %{name}-%{version}-backing-perms.patch
+# Fix parsing certain USB sysfs files (bz 598272)
+Patch34: %{name}-%{version}-fix-usb-parsing.patch
+# Improve migration error reporting (bz 499750)
+Patch35: %{name}-%{version}-migrate-errreport.patch
+# Sanitize pool target paths (bz 494005)
+Patch36: %{name}-%{version}-sanitize-pool.patch
+# Add qemu.conf for clear emulator capabilities
+Patch37: %{name}-%{version}-caps-option.patch
+# Prevent libvirtd inside a VM from breaking network access (bz 235961)
+Patch38: %{name}-%{version}-network-collision.patch
+# Mention --all in 'virsh list' docs (bz 575512)
+Patch39: %{name}-%{version}-man-page-list.patch
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
@@ -468,6 +488,16 @@ of recent versions of Linux (and other OSes).
 %patch27 -p1
 %patch28 -p1
 %patch29 -p1
+%patch30 -p1
+%patch31 -p1
+%patch32 -p1
+#%patch33 -p1
+%patch34 -p1
+%patch35 -p1
+%patch36 -p1
+%patch37 -p1
+%patch38 -p1
+%patch39 -p1
 
 %build
 # Needed for libvirt-logrotate-create-lxc-uml-dirs.patch
@@ -862,6 +892,18 @@ fi
 %endif
 
 %changelog
+* Tue Jun 15 2010 Cole Robinson <crobinso@redhat.com> - 0.7.1-17.fc12
+- Fix attach-device crash on cgroup cleanup (bz 556791)
+- Fix crash on bad LXC URI (bz 554191)
+- Add qemu.conf options for audio workaround
+- Fix permissions of storage backing stores (bz 579067)
+- Fix parsing certain USB sysfs files (bz 598272)
+- Improve migration error reporting (bz 499750)
+- Sanitize pool target paths (bz 494005)
+- Add qemu.conf for clear emulator capabilities
+- Prevent libvirtd inside a VM from breaking network access (bz 235961)
+- Mention --all in 'virsh list' docs (bz 575512)
+
 * Mon May 17 2010 Cole Robinson <crobinso@redhat.com> - 0.7.1-16.fc12
 - Fix crash with invalid QEmu URI (bz 566070)
 - Fix VNC TLS crash (bz 544305)
