@@ -53,12 +53,17 @@
 %define with_storage_mpath 0%{!?_without_storage_mpath:%{server_drivers}}
 %define with_numactl       0%{!?_without_numactl:%{server_drivers}}
 %define with_selinux       0%{!?_without_selinux:%{server_drivers}}
-%define with_hal           0%{!?_without_hal:%{server_drivers}}
 
 # A few optional bits off by default, we enable later
 %define with_polkit        0%{!?_without_polkit:0}
 %define with_capng         0%{!?_without_capng:0}
 %define with_netcf         0%{!?_without_netcf:0}
+%define with_udev          0%{!?_without_udev:0}
+%define with_hal           0%{!?_without_hal:0}
+%define with_yajl          0%{!?_without_yajl:0}
+%define with_nwfilter      0%{!?_without_nwfilter:0}
+%define with_libpcap       0%{!?_without_libpcap:0}
+%define with_macvtap       0%{!?_without_macvtap:0}
 
 # Non-server/HV driver defaults which are always enabled
 %define with_python        0%{!?_without_python:1}
@@ -72,6 +77,10 @@
 %define with_xen 0
 %endif
 
+# Numactl is not available on s390[x]
+%ifarch s390 s390x
+%define with_numactl 0
+%endif
 
 # RHEL doesn't ship OpenVZ, VBox, UML, OpenNebula, PowerHypervisor or ESX
 %if 0%{?rhel}
@@ -129,6 +138,29 @@
 %define with_netcf     0%{!?_without_netcf:%{server_drivers}}
 %endif
 
+# udev is used to manage host devices in Fedora 12 / RHEL-6 or newer
+%if 0%{?fedora} >= 12 || 0%{?rhel} >= 6
+%define with_udev     0%{!?_without_udev:%{server_drivers}}
+%else
+%define with_hal       0%{!?_without_hal:%{server_drivers}}
+%endif
+
+# Enable yajl library for JSON mode with QEMU
+%if 0%{?fedora} >= 13 || 0%{?rhel} >= 6
+%define with_yajl     0%{!?_without_yajl:%{server_drivers}}
+%endif
+
+# Enable libpcap library
+%if %{with_qemu}
+%define with_nwfilter 0%{!?_without_nwfilter:%{server_drivers}}
+%define with_libpcap  0%{!?_without_libpcap:%{server_drivers}}
+%define with_macvtap  0%{!?_without_macvtap:%{server_drivers}}
+%endif
+
+%if %{with_macvtap}
+%define with_libnl 1
+%endif
+
 # Force QEMU to run as non-root
 %if 0%{?fedora} >= 12 || 0%{?rhel} >= 6
 %define qemu_user  qemu
@@ -150,106 +182,31 @@
 
 Summary: Library providing a simple API virtualization
 Name: libvirt
-Version: 0.7.1
-Release: 18%{?dist}%{?extra_release}
+Version: 0.8.2
+Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
-
-# A couple of hot-unplug memory handling fixes (#523953)
-Patch01: libvirt-fix-net-hotunplug-double-free.patch
-Patch02: libvirt-fix-pci-hostdev-hotunplug-leak.patch
-
-# Don't set a bogus error in virDrvSupportsFeature()
-Patch03: libvirt-fix-drv-supports-feature-bogus-error.patch
-
-# Fix raw save format
-Patch04: libvirt-fix-qemu-raw-format-save.patch
-
-# Fix USB device passthrough (#422683)
-Patch05: libvirt-fix-usb-device-passthrough.patch
-
-# Disable sound backend (#524499, #508317)
-Patch06: libvirt-disable-audio-backend.patch
-
-# Re-label qcow2 backing files (#497131)
-Patch07: libvirt-svirt-relabel-qcow2-backing-files.patch
-
-# Change logrotate config to weekly (#526769)
-Patch08: libvirt-change-logrotate-config-to-weekly.patch
-Patch09: libvirt-logrotate-create-lxc-uml-dirs.patch
-
-# Add several PCI hot-unplug typo fixes from upstream
-Patch10: libvirt-fix-device-detach-typo1.patch
-Patch11: libvirt-fix-device-detach-typo2.patch
-Patch12: libvirt-fix-device-detach-typo3.patch
-
-# Fix libvirtd memory leak during error reply sending (#528162)
-Patch13: libvirt-fix-libvirtd-leak-in-error-reply.patch
-
-# Fix restore of qemu guest using raw save format (#523158)
-Patch14: libvirt-fix-qemu-restore-from-raw1.patch
-Patch15: libvirt-fix-qemu-restore-from-raw2.patch
-
-# Misc fixes to qemu machine types handling
-Patch16: libvirt-qemu-machine-type-fixes1.patch
-Patch17: libvirt-qemu-machine-type-fixes2.patch
-
-# A couple of XML formatting fixes
-Patch18: libvirt-storage-iscsi-auth-xml-formatting.patch
-Patch19: libvirt-network-delay-attribute-formatting.patch
-
-# Fix xen driver recounting (#531429)
-Patch20: libvirt-fix-xen-driver-refcounting.patch
-
-# Fix crash on virsh error (#531429)
-Patch21: libvirt-double-free-on-virsh-error.patch
-
-# Fix segfault where XML parsing fails in qemu disk hotplug
-Patch22: libvirt-fix-crash-on-device-hotplug-parse-error.patch
-
-# Fix segfault where interface target device name is ommitted (#523418)
-Patch23: libvirt-fix-crash-on-missing-iface-target-dev.patch
-
-# Avoid compressing small log files (#531030)
-Patch24: libvirt-logrotate-avoid-compressing-small-logs.patch
-# Fix crash with invalid QEmu URI (bz 566070)
-Patch25: %{name}-%{version}-qemu-uri-crash.patch
-# Fix VNC TLS crash (bz 544305)
-Patch26: %{name}-%{version}-gcrypt-thread-init.patch
-# Fix USB devices with high bus/addr values (bz 542639)
-Patch27: %{name}-%{version}-fix-usb-busaddr.patch
-# Fix save/restore with non-root guests (bz 534143, bz 532654)
-Patch28: %{name}-%{version}-fix-selinux-save.patch
-# Fix USB devices attached via virt-manager (bz 537227)
-Patch29: %{name}-%{version}-fix-usb-product.patch
-# Fix attach-device crash on cgroup cleanup (bz 556791)
-Patch30: %{name}-%{version}-fix-cgroup-crash.patch
-# Fix crash on bad LXC URI (bz 554191)
-Patch31: %{name}-%{version}-lxc-uri-crash.patch
-# Add qemu.conf options for audio workaround
-Patch32: %{name}-%{version}-audio-config.patch
-# Fix permissions of storage backing stores (bz 579067)
-Patch33: %{name}-%{version}-backing-perms.patch
-# Fix parsing certain USB sysfs files (bz 598272)
-Patch34: %{name}-%{version}-fix-usb-parsing.patch
-# Improve migration error reporting (bz 499750)
-Patch35: %{name}-%{version}-migrate-errreport.patch
-# Sanitize pool target paths (bz 494005)
-Patch36: %{name}-%{version}-sanitize-pool.patch
-# Add qemu.conf for clear emulator capabilities
-Patch37: %{name}-%{version}-caps-option.patch
-# Prevent libvirtd inside a VM from breaking network access (bz 235961)
-Patch38: %{name}-%{version}-network-collision.patch
-# Mention --all in 'virsh list' docs (bz 575512)
-Patch39: %{name}-%{version}-man-page-list.patch
-
+# Patches 1-> 11  CVE-2010-2237, 2238, 2239
+Patch1: libvirt-0.8.2-01-extract-backing-store-format.patch
+Patch2: libvirt-0.8.2-02-remove-type-field.patch
+Patch3: libvirt-0.8.2-03-refactor-metadata-extract.patch
+Patch4: libvirt-0.8.2-04-require-storage-format.patch
+Patch5: libvirt-0.8.2-05-disk-path-iterator.patch
+Patch6: libvirt-0.8.2-06-use-disk-iterator.patch
+Patch7: libvirt-0.8.2-07-secdriver-params.patch
+Patch8: libvirt-0.8.2-08-disable-disk-probing.patch
+Patch9: libvirt-0.8.2-09-set-default-driver.patch
+Patch10: libvirt-0.8.2-10-qemu-img-format-handling.patch
+Patch11: libvirt-0.8.2-11-storage-vol-backing.patch
+# CVE-2010-2242
+Patch12: libvirt-0.8.2-apply-iptables-sport-mapping.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python-devel
 
 # The client side, i.e. shared libs and virsh are in a subpackage
-Requires: libvirt-client = %{version}-%{release}
+Requires: %{name}-client = %{version}-%{release}
 
 # Used by many of the drivers, so turn it on whenever the
 # daemon is present
@@ -260,9 +217,17 @@ Requires: bridge-utils
 Requires: dnsmasq
 Requires: iptables
 %endif
+%if %{with_nwfilter}
+Requires: ebtables
+Requires: iptables
+Requires: iptables-ipv6
+%endif
 # needed for device enumeration
 %if %{with_hal}
 Requires: hal
+%endif
+%if %{with_udev}
+Requires: udev >= 145
 %endif
 %if %{with_polkit}
 %if 0%{?fedora} >= 12 || 0%{?rhel} >=6
@@ -326,6 +291,19 @@ BuildRequires: gettext
 BuildRequires: gnutls-devel
 %if %{with_hal}
 BuildRequires: hal-devel
+%endif
+%if %{with_udev}
+BuildRequires: libudev-devel >= 145
+BuildRequires: libpciaccess-devel >= 0.10.9
+%endif
+%if %{with_yajl}
+BuildRequires: yajl-devel
+%endif
+%if %{with_libpcap}
+BuildRequires: libpcap-devel
+%endif
+%if %{with_libnl}
+BuildRequires: libnl-devel
 %endif
 %if %{with_avahi}
 BuildRequires: avahi-devel
@@ -397,14 +375,14 @@ BuildRequires: libcap-ng-devel >= 0.5.0
 BuildRequires: libssh2-devel
 %endif
 %if %{with_netcf}
-BuildRequires: netcf-devel
+BuildRequires: netcf-devel >= 0.1.4
+%endif
+%if %{with_esx}
+BuildRequires: libcurl-devel
 %endif
 
 # Fedora build root suckage
 BuildRequires: gawk
-
-# Needed for libvirt-logrotate-create-lxc-uml-dirs.patch
-BuildRequires: automake
 
 %description
 Libvirt is a C toolkit to interact with the virtualization capabilities
@@ -433,7 +411,7 @@ virtualization capabilities of recent versions of Linux (and other OSes).
 %package devel
 Summary: Libraries, includes, etc. to compile with the libvirt library
 Group: Development/Libraries
-Requires: libvirt-client = %{version}-%{release}
+Requires: %{name}-client = %{version}-%{release}
 Requires: pkgconfig
 %if %{with_xen}
 Requires: xen-devel
@@ -447,7 +425,7 @@ the virtualization capabilities of recent versions of Linux (and other OSes).
 %package python
 Summary: Python bindings for the libvirt library
 Group: Development/Libraries
-Requires: libvirt-client = %{version}-%{release}
+Requires: %{name}-client = %{version}-%{release}
 
 %description python
 The libvirt-python package contains a module that permits applications
@@ -458,51 +436,20 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
-
-%patch01 -p1
-%patch02 -p1
-%patch03 -p1
-%patch04 -p1
-%patch05 -p1
-%patch06 -p1
-%patch07 -p1
-%patch08 -p1
-%patch09 -p1
+%patch1 -p1
+%patch2 -p1
+%patch3 -p1
+%patch4 -p1
+%patch5 -p1
+%patch6 -p1
+%patch7 -p1
+%patch8 -p1
+%patch9 -p1
 %patch10 -p1
 %patch11 -p1
 %patch12 -p1
-%patch13 -p1
-%patch14 -p1
-%patch15 -p1
-%patch16 -p1
-%patch17 -p1
-%patch18 -p1
-%patch19 -p1
-%patch20 -p1
-%patch21 -p1
-%patch22 -p1
-%patch23 -p1
-%patch24 -p1
-%patch25 -p1
-%patch26 -p1
-%patch27 -p1
-%patch28 -p1
-%patch29 -p1
-%patch30 -p1
-%patch31 -p1
-%patch32 -p1
-%patch33 -p1
-%patch34 -p1
-%patch35 -p1
-%patch36 -p1
-%patch37 -p1
-%patch38 -p1
-%patch39 -p1
 
 %build
-# Needed for libvirt-logrotate-create-lxc-uml-dirs.patch
-automake
-
 %if ! %{with_xen}
 %define _without_xen --without-xen
 %endif
@@ -607,6 +554,22 @@ automake
 %define _without_hal --without-hal
 %endif
 
+%if ! %{with_udev}
+%define _without_udev --without-udev
+%endif
+
+%if ! %{with_yajl}
+%define _without_yajl --without-yajl
+%endif
+
+%if ! %{with_libpcap}
+%define _without_libpcap --without-libpcap
+%endif
+
+%if ! %{with_macvtap}
+%define _without_macvtap --without-macvtap
+%endif
+
 %configure %{?_without_xen} \
            %{?_without_qemu} \
            %{?_without_openvz} \
@@ -633,6 +596,10 @@ automake
            %{?_without_netcf} \
            %{?_without_selinux} \
            %{?_without_hal} \
+           %{?_without_udev} \
+           %{?_without_yajl} \
+           %{?_without_libpcap} \
+           %{?_without_macvtap} \
            --with-qemu-user=%{qemu_user} \
            --with-qemu-group=%{qemu_group} \
            --with-init-script=redhat \
@@ -644,16 +611,17 @@ gzip -9 ChangeLog
 rm -fr %{buildroot}
 
 %makeinstall
-(cd docs/examples ; make clean ; rm -rf .deps Makefile Makefile.in)
-(cd docs/examples/python ; rm -rf .deps Makefile Makefile.in)
-(cd examples/hellolibvirt ; make clean ; rm -rf .deps .libs Makefile Makefile.in)
-(cd examples/domain-events/events-c ;  make clean ;rm -rf .deps .libs Makefile Makefile.in)
+for i in domain-events/events-c dominfo domsuspend hellolibvirt python xml/nwfilter
+do
+  (cd examples/$i ; make clean ; rm -rf .deps .libs Makefile Makefile.in)
+done
 rm -f $RPM_BUILD_ROOT%{_libdir}/*.la
 rm -f $RPM_BUILD_ROOT%{_libdir}/*.a
 rm -f $RPM_BUILD_ROOT%{_libdir}/python*/site-packages/*.la
 rm -f $RPM_BUILD_ROOT%{_libdir}/python*/site-packages/*.a
 
 %if %{with_network}
+install -d -m 0755 $RPM_BUILD_ROOT%{_datadir}/lib/libvirt/dnsmasq/
 # We don't want to install /etc/libvirt/qemu/networks in the main %files list
 # because if the admin wants to delete the default network completely, we don't
 # want to end up re-incarnating it on every RPM upgrade.
@@ -674,6 +642,11 @@ rm -f $RPM_BUILD_ROOT%{_datadir}/augeas/lenses/tests/test_libvirtd_qemu.aug
 %endif
 %find_lang %{name}
 
+%if ! %{with_lxc}
+rm -f $RPM_BUILD_ROOT%{_datadir}/augeas/lenses/libvirtd_lxc.aug
+rm -f $RPM_BUILD_ROOT%{_datadir}/augeas/lenses/tests/test_libvirtd_lxc.aug
+%endif
+
 %if ! %{with_python}
 rm -rf $RPM_BUILD_ROOT%{_datadir}/doc/libvirt-python-%{version}
 %endif
@@ -682,8 +655,20 @@ rm -rf $RPM_BUILD_ROOT%{_datadir}/doc/libvirt-python-%{version}
 rm -rf $RPM_BUILD_ROOT%{_datadir}/doc/libvirt-%{version}
 %endif
 
+%if ! %{with_libvirtd}
+rm -rf $RPM_BUILD_ROOT%{_sysconfdir}/libvirt/nwfilter
+%endif
+
 %if ! %{with_qemu}
 rm -rf $RPM_BUILD_ROOT%{_sysconfdir}/libvirt/qemu.conf
+rm -rf $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d/libvirtd.qemu
+%endif
+%if ! %{with_lxc}
+rm -rf $RPM_BUILD_ROOT%{_sysconfdir}/libvirt/lxc.conf
+rm -rf $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d/libvirtd.lxc
+%endif
+%if ! %{with_uml}
+rm -rf $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d/libvirtd.uml
 %endif
 
 %if %{with_libvirtd}
@@ -692,6 +677,17 @@ chmod 0644 $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig/libvirtd
 
 %clean
 rm -fr %{buildroot}
+
+%check
+cd tests
+# These 3 tests don't current work in a mock build root
+for i in nodeinfotest daemon-conf seclabeltest
+do
+  rm -f $i
+  printf "#!/bin/sh\nexit 0\n" > $i
+  chmod +x $i
+done
+make check
 
 %pre
 %if 0%{?fedora} >= 12 || 0%{?rhel} >= 6
@@ -713,7 +709,7 @@ getent passwd qemu >/dev/null || \
 # or on the first upgrade from a non-network aware libvirt only.
 # We check this by looking to see if the daemon is already installed
 /sbin/chkconfig --list libvirtd 1>/dev/null 2>&1
-if [ $? != 0 -a ! -f %{_sysconfdir}/libvirt/qemu/networks/default.xml ]
+if test $? != 0 && test ! -f %{_sysconfdir}/libvirt/qemu/networks/default.xml
 then
     UUID=`/usr/bin/uuidgen`
     sed -e "s,</name>,</name>\n  <uuid>$UUID</uuid>," \
@@ -737,7 +733,22 @@ if [ $1 = 0 ]; then
 fi
 %endif
 
-%post client -p /sbin/ldconfig
+%preun client
+
+if [ $1 = 0 ]; then
+    /sbin/chkconfig --del libvirt-guests
+    rm -f /var/lib/libvirt/libvirt-guests
+fi
+
+%post client
+
+/sbin/ldconfig
+/sbin/chkconfig --add libvirt-guests
+if [ $1 -ge 1 ]; then
+    # this doesn't do anything but allowing for libvirt-guests to be
+    # stopped on the first shutdown
+    /sbin/service libvirt-guests start > /dev/null 2>&1 || true
+fi
 
 %postun client -p /sbin/ldconfig
 
@@ -754,16 +765,26 @@ fi
 %dir %attr(0700, root, root) %{_sysconfdir}/libvirt/qemu/networks/autostart
 %endif
 
+%dir %attr(0700, root, root) %{_sysconfdir}/libvirt/nwfilter/
+%{_sysconfdir}/libvirt/nwfilter/*.xml
+
 %{_sysconfdir}/rc.d/init.d/libvirtd
 %config(noreplace) %{_sysconfdir}/sysconfig/libvirtd
 %config(noreplace) %{_sysconfdir}/libvirt/libvirtd.conf
-%config(noreplace) %{_sysconfdir}/logrotate.d/libvirtd
 %dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/qemu/
 %dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/lxc/
 %dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/uml/
 
 %if %{with_qemu}
 %config(noreplace) %{_sysconfdir}/libvirt/qemu.conf
+%config(noreplace) %{_sysconfdir}/logrotate.d/libvirtd.qemu
+%endif
+%if %{with_lxc}
+%config(noreplace) %{_sysconfdir}/libvirt/lxc.conf
+%config(noreplace) %{_sysconfdir}/logrotate.d/libvirtd.lxc
+%endif
+%if %{with_uml}
+%config(noreplace) %{_sysconfdir}/logrotate.d/libvirtd.uml
 %endif
 
 %dir %{_datadir}/libvirt/
@@ -796,14 +817,17 @@ fi
 %if %{with_network}
 %dir %{_localstatedir}/run/libvirt/network/
 %dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/network/
-%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/iptables/
-%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/iptables/filter/
-%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/iptables/nat/
+%dir %attr(0755, root, root) %{_localstatedir}/lib/libvirt/dnsmasq/
 %endif
 
 %if %{with_qemu}
 %{_datadir}/augeas/lenses/libvirtd_qemu.aug
 %{_datadir}/augeas/lenses/tests/test_libvirtd_qemu.aug
+%endif
+
+%if %{with_lxc}
+%{_datadir}/augeas/lenses/libvirtd_lxc.aug
+%{_datadir}/augeas/lenses/tests/test_libvirtd_lxc.aug
 %endif
 
 %{_datadir}/augeas/lenses/libvirtd.aug
@@ -839,14 +863,17 @@ fi
 
 %{_mandir}/man1/virsh.1*
 %{_mandir}/man1/virt-xml-validate.1*
+%{_mandir}/man1/virt-pki-validate.1*
 %{_bindir}/virsh
 %{_bindir}/virt-xml-validate
+%{_bindir}/virt-pki-validate
 %{_libdir}/lib*.so.*
 
 %dir %{_datadir}/libvirt/
 %dir %{_datadir}/libvirt/schemas/
 
 %{_datadir}/libvirt/schemas/domain.rng
+%{_datadir}/libvirt/schemas/domainsnapshot.rng
 %{_datadir}/libvirt/schemas/network.rng
 %{_datadir}/libvirt/schemas/storagepool.rng
 %{_datadir}/libvirt/schemas/storagevol.rng
@@ -855,6 +882,13 @@ fi
 %{_datadir}/libvirt/schemas/interface.rng
 %{_datadir}/libvirt/schemas/secret.rng
 %{_datadir}/libvirt/schemas/storageencryption.rng
+%{_datadir}/libvirt/schemas/nwfilter.rng
+
+%{_datadir}/libvirt/cpu_map.xml
+
+%{_sysconfdir}/rc.d/init.d/libvirt-guests
+%config(noreplace) %{_sysconfdir}/sysconfig/libvirt-guests
+%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt
 
 %if %{with_sasl}
 %config(noreplace) %{_sysconfdir}/sasl2/libvirt.conf
@@ -874,9 +908,12 @@ fi
 %doc %{_datadir}/gtk-doc/html/libvirt/*.css
 
 %doc docs/*.html docs/html docs/*.gif
-%doc docs/examples
 %doc docs/libvirt-api.xml
-%doc examples
+%doc examples/hellolibvirt
+%doc examples/domain-events/events-c
+%doc examples/dominfo
+%doc examples/domsuspend
+%doc examples/xml
 
 %if %{with_python}
 %files python
@@ -887,11 +924,21 @@ fi
 %{_libdir}/python*/site-packages/libvirtmod*
 %doc python/tests/*.py
 %doc python/TODO
-%doc python/libvirtclass.txt
-%doc docs/examples/python
+%doc examples/python
+%doc examples/domain-events/events-python
 %endif
 
 %changelog
+* Mon Jul 12 2010 Daniel P. Berrange <berrange@redhat.com> - 0.8.2-1
+- Update to 0.8.2 release
+- CVE-2010-2237 ignoring defined main disk format when looking up disk backing stores
+- CVE-2010-2238 ignoring defined disk backing store format when recursing into disk
+  image backing stores
+- CVE-2010-2239 not setting user defined backing store format when creating new image
+- CVE-2010-2242 libvirt: improperly mapped source privileged ports may allow for
+  obtaining privileged resources on the host
+
+
 * Thu Jun 17 2010 Cole Robinson <crobinso@redhat.com> - 0.7.1-18.fc12
 - Actually apply all previous patches
 
