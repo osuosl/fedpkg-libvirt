@@ -61,6 +61,9 @@
 %define with_udev          0%{!?_without_udev:0}
 %define with_hal           0%{!?_without_hal:0}
 %define with_yajl          0%{!?_without_yajl:0}
+%define with_nwfilter      0%{!?_without_nwfilter:0}
+%define with_libpcap       0%{!?_without_libpcap:0}
+%define with_macvtap       0%{!?_without_macvtap:0}
 
 # Non-server/HV driver defaults which are always enabled
 %define with_python        0%{!?_without_python:1}
@@ -147,6 +150,19 @@
 %define with_yajl     0%{!?_without_yajl:%{server_drivers}}
 %endif
 
+# Enable libpcap library
+%if %{with_qemu}
+%define with_nwfilter 0%{!?_without_nwfilter:%{server_drivers}}
+%define with_libpcap  0%{!?_without_libpcap:%{server_drivers}}
+%define with_macvtap  0%{!?_without_macvtap:%{server_drivers}}
+%endif
+
+%if %{with_macvtap}
+%define with_libnl 1
+%else
+%define with_libnl 0
+%endif
+
 # Force QEMU to run as non-root
 %if 0%{?fedora} >= 12 || 0%{?rhel} >= 6
 %define qemu_user  qemu
@@ -168,49 +184,31 @@
 
 Summary: Library providing a simple API virtualization
 Name: libvirt
-Version: 0.7.7
-Release: 5%{?dist}%{?extra_release}
+Version: 0.8.2
+Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
-# Fix USB devices by product with security enabled (bz 574136)
-Patch1: %{name}-%{version}-fix-usb-product.patch
-# Set kernel/initrd in security driver, fixes some URL installs (bz 566425)
-Patch2: %{name}-%{version}-set-kernel-perms.patch
-# Fix slow storage volume allocation (bz 582356)
-Patch3: %{name}-%{version}-fix-slow-dsync.patch
-# Fix nodedev XML conversion errors (bz 591262)
-Patch4: %{name}-%{version}-nodedev-conversions.patch
-# Fix PCI xml decimal parsing (bz 582752)
-Patch5: %{name}-%{version}-pci-decimal-parsing.patch
-# Fix CDROM media connect/eject (bz 582005)
-Patch6: %{name}-%{version}-fix-cdrom-change.patch
-# Always report qemu startup output on error (bz 581381)
-Patch7: %{name}-%{version}-qemu-startup-output.patch
-# Fix crash from 'virsh dominfo' if secdriver disabled (bz 581166)
-Patch8: %{name}-%{version}-no-secdriver-crash.patch
-# Add qemu.conf options for audio workaround
-Patch9: %{name}-%{version}-audio-config.patch
-# Fix parsing certain USB sysfs files (bz 598272)
-Patch10: %{name}-%{version}-fix-usb-parsing.patch
-# Sanitize pool target paths (bz 494005)
-Patch11: %{name}-%{version}-sanitize-pool.patch
-# Add qemu.conf for clear emulator capabilities
-Patch12: %{name}-%{version}-caps-option.patch
-# Prevent libvirtd inside a VM from breaking network access (bz 235961)
-Patch13: %{name}-%{version}-network-collision.patch
-# Mention --all in 'virsh list' docs (bz 575512)
-Patch14: %{name}-%{version}-man-page-list.patch
-# Initscript fixes (bz 565238)
-Patch15: %{name}-%{version}-init-fixes.patch
-# List wireless interfaces via nodedev-list (bz 596928)
-Patch16: %{name}-%{version}-udev-wireless.patch
+# Patches 1-> 11  CVE-2010-2237, 2238, 2239
+Patch1: libvirt-0.8.2-01-extract-backing-store-format.patch
+Patch2: libvirt-0.8.2-02-remove-type-field.patch
+Patch3: libvirt-0.8.2-03-refactor-metadata-extract.patch
+Patch4: libvirt-0.8.2-04-require-storage-format.patch
+Patch5: libvirt-0.8.2-05-disk-path-iterator.patch
+Patch6: libvirt-0.8.2-06-use-disk-iterator.patch
+Patch7: libvirt-0.8.2-07-secdriver-params.patch
+Patch8: libvirt-0.8.2-08-disable-disk-probing.patch
+Patch9: libvirt-0.8.2-09-set-default-driver.patch
+Patch10: libvirt-0.8.2-10-qemu-img-format-handling.patch
+Patch11: libvirt-0.8.2-11-storage-vol-backing.patch
+# CVE-2010-2242
+Patch12: libvirt-0.8.2-apply-iptables-sport-mapping.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python-devel
 
 # The client side, i.e. shared libs and virsh are in a subpackage
-Requires: libvirt-client = %{version}-%{release}
+Requires: %{name}-client = %{version}-%{release}
 
 # Used by many of the drivers, so turn it on whenever the
 # daemon is present
@@ -220,6 +218,11 @@ Requires: bridge-utils
 %if %{with_network}
 Requires: dnsmasq
 Requires: iptables
+%endif
+%if %{with_nwfilter}
+Requires: ebtables
+Requires: iptables
+Requires: iptables-ipv6
 %endif
 # needed for device enumeration
 %if %{with_hal}
@@ -280,7 +283,7 @@ Requires: device-mapper
 BuildRequires: xen-devel
 %endif
 %if %{with_one}
-BuildRequires: xmlrpc-c-devel >= 1.14.0 xmlrpc-c-client
+BuildRequires: xmlrpc-c-devel >= 1.14.0
 %endif
 BuildRequires: libxml2-devel
 BuildRequires: xhtml1-dtds
@@ -297,6 +300,12 @@ BuildRequires: libpciaccess-devel >= 0.10.9
 %endif
 %if %{with_yajl}
 BuildRequires: yajl-devel
+%endif
+%if %{with_libpcap}
+BuildRequires: libpcap-devel
+%endif
+%if %{with_libnl}
+BuildRequires: libnl-devel
 %endif
 %if %{with_avahi}
 BuildRequires: avahi-devel
@@ -370,6 +379,9 @@ BuildRequires: libssh2-devel
 %if %{with_netcf}
 BuildRequires: netcf-devel >= 0.1.4
 %endif
+%if %{with_esx}
+BuildRequires: libcurl-devel
+%endif
 
 # Fedora build root suckage
 BuildRequires: gawk
@@ -401,7 +413,7 @@ virtualization capabilities of recent versions of Linux (and other OSes).
 %package devel
 Summary: Libraries, includes, etc. to compile with the libvirt library
 Group: Development/Libraries
-Requires: libvirt-client = %{version}-%{release}
+Requires: %{name}-client = %{version}-%{release}
 Requires: pkgconfig
 %if %{with_xen}
 Requires: xen-devel
@@ -415,7 +427,7 @@ the virtualization capabilities of recent versions of Linux (and other OSes).
 %package python
 Summary: Python bindings for the libvirt library
 Group: Development/Libraries
-Requires: libvirt-client = %{version}-%{release}
+Requires: %{name}-client = %{version}-%{release}
 
 %description python
 The libvirt-python package contains a module that permits applications
@@ -438,10 +450,6 @@ of recent versions of Linux (and other OSes).
 %patch10 -p1
 %patch11 -p1
 %patch12 -p1
-%patch13 -p1
-%patch14 -p1
-%patch15 -p1
-%patch16 -p1
 
 %build
 %if ! %{with_xen}
@@ -556,6 +564,14 @@ of recent versions of Linux (and other OSes).
 %define _without_yajl --without-yajl
 %endif
 
+%if ! %{with_libpcap}
+%define _without_libpcap --without-libpcap
+%endif
+
+%if ! %{with_macvtap}
+%define _without_macvtap --without-macvtap
+%endif
+
 %configure %{?_without_xen} \
            %{?_without_qemu} \
            %{?_without_openvz} \
@@ -584,6 +600,8 @@ of recent versions of Linux (and other OSes).
            %{?_without_hal} \
            %{?_without_udev} \
            %{?_without_yajl} \
+           %{?_without_libpcap} \
+           %{?_without_macvtap} \
            --with-qemu-user=%{qemu_user} \
            --with-qemu-group=%{qemu_group} \
            --with-init-script=redhat \
@@ -595,7 +613,7 @@ gzip -9 ChangeLog
 rm -fr %{buildroot}
 
 %makeinstall
-for i in domain-events/events-c dominfo domsuspend hellolibvirt python
+for i in domain-events/events-c dominfo domsuspend hellolibvirt python xml/nwfilter
 do
   (cd examples/$i ; make clean ; rm -rf .deps .libs Makefile Makefile.in)
 done
@@ -605,6 +623,7 @@ rm -f $RPM_BUILD_ROOT%{_libdir}/python*/site-packages/*.la
 rm -f $RPM_BUILD_ROOT%{_libdir}/python*/site-packages/*.a
 
 %if %{with_network}
+install -d -m 0755 $RPM_BUILD_ROOT%{_datadir}/lib/libvirt/dnsmasq/
 # We don't want to install /etc/libvirt/qemu/networks in the main %files list
 # because if the admin wants to delete the default network completely, we don't
 # want to end up re-incarnating it on every RPM upgrade.
@@ -638,11 +657,20 @@ rm -rf $RPM_BUILD_ROOT%{_datadir}/doc/libvirt-python-%{version}
 rm -rf $RPM_BUILD_ROOT%{_datadir}/doc/libvirt-%{version}
 %endif
 
+%if ! %{with_libvirtd}
+rm -rf $RPM_BUILD_ROOT%{_sysconfdir}/libvirt/nwfilter
+%endif
+
 %if ! %{with_qemu}
 rm -rf $RPM_BUILD_ROOT%{_sysconfdir}/libvirt/qemu.conf
+rm -rf $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d/libvirtd.qemu
 %endif
 %if ! %{with_lxc}
 rm -rf $RPM_BUILD_ROOT%{_sysconfdir}/libvirt/lxc.conf
+rm -rf $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d/libvirtd.lxc
+%endif
+%if ! %{with_uml}
+rm -rf $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d/libvirtd.uml
 %endif
 
 %if %{with_libvirtd}
@@ -651,6 +679,23 @@ chmod 0644 $RPM_BUILD_ROOT%{_sysconfdir}/sysconfig/libvirtd
 
 %clean
 rm -fr %{buildroot}
+
+%check
+cd tests
+# These 3 tests don't current work in a mock build root
+for i in nodeinfotest daemon-conf seclabeltest
+do
+  rm -f $i
+  printf "#!/bin/sh\nexit 0\n" > $i
+  chmod +x $i
+done
+# Temp hack till we figure out why its broken on ppc
+%ifarch ppc
+rm -f nwfilterxml2xmltest
+printf "#!/bin/sh\nexit 0\n" > nwfilterxml2xmltest
+chmod +x nwfilterxml2xmltest
+%endif
+make check
 
 %pre
 %if 0%{?fedora} >= 12 || 0%{?rhel} >= 6
@@ -672,7 +717,7 @@ getent passwd qemu >/dev/null || \
 # or on the first upgrade from a non-network aware libvirt only.
 # We check this by looking to see if the daemon is already installed
 /sbin/chkconfig --list libvirtd 1>/dev/null 2>&1
-if [ $? != 0 -a ! -f %{_sysconfdir}/libvirt/qemu/networks/default.xml ]
+if test $? != 0 && test ! -f %{_sysconfdir}/libvirt/qemu/networks/default.xml
 then
     UUID=`/usr/bin/uuidgen`
     sed -e "s,</name>,</name>\n  <uuid>$UUID</uuid>," \
@@ -696,7 +741,22 @@ if [ $1 = 0 ]; then
 fi
 %endif
 
-%post client -p /sbin/ldconfig
+%preun client
+
+if [ $1 = 0 ]; then
+    /sbin/chkconfig --del libvirt-guests
+    rm -f /var/lib/libvirt/libvirt-guests
+fi
+
+%post client
+
+/sbin/ldconfig
+/sbin/chkconfig --add libvirt-guests
+if [ $1 -ge 1 ]; then
+    # this doesn't do anything but allowing for libvirt-guests to be
+    # stopped on the first shutdown
+    /sbin/service libvirt-guests start > /dev/null 2>&1 || true
+fi
 
 %postun client -p /sbin/ldconfig
 
@@ -713,19 +773,26 @@ fi
 %dir %attr(0700, root, root) %{_sysconfdir}/libvirt/qemu/networks/autostart
 %endif
 
+%dir %attr(0700, root, root) %{_sysconfdir}/libvirt/nwfilter/
+%{_sysconfdir}/libvirt/nwfilter/*.xml
+
 %{_sysconfdir}/rc.d/init.d/libvirtd
 %config(noreplace) %{_sysconfdir}/sysconfig/libvirtd
 %config(noreplace) %{_sysconfdir}/libvirt/libvirtd.conf
-%config(noreplace) %{_sysconfdir}/logrotate.d/libvirtd
 %dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/qemu/
 %dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/lxc/
 %dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/uml/
 
 %if %{with_qemu}
 %config(noreplace) %{_sysconfdir}/libvirt/qemu.conf
+%config(noreplace) %{_sysconfdir}/logrotate.d/libvirtd.qemu
 %endif
 %if %{with_lxc}
 %config(noreplace) %{_sysconfdir}/libvirt/lxc.conf
+%config(noreplace) %{_sysconfdir}/logrotate.d/libvirtd.lxc
+%endif
+%if %{with_uml}
+%config(noreplace) %{_sysconfdir}/logrotate.d/libvirtd.uml
 %endif
 
 %dir %{_datadir}/libvirt/
@@ -758,6 +825,7 @@ fi
 %if %{with_network}
 %dir %{_localstatedir}/run/libvirt/network/
 %dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/network/
+%dir %attr(0755, root, root) %{_localstatedir}/lib/libvirt/dnsmasq/
 %endif
 
 %if %{with_qemu}
@@ -813,6 +881,7 @@ fi
 %dir %{_datadir}/libvirt/schemas/
 
 %{_datadir}/libvirt/schemas/domain.rng
+%{_datadir}/libvirt/schemas/domainsnapshot.rng
 %{_datadir}/libvirt/schemas/network.rng
 %{_datadir}/libvirt/schemas/storagepool.rng
 %{_datadir}/libvirt/schemas/storagevol.rng
@@ -821,8 +890,13 @@ fi
 %{_datadir}/libvirt/schemas/interface.rng
 %{_datadir}/libvirt/schemas/secret.rng
 %{_datadir}/libvirt/schemas/storageencryption.rng
+%{_datadir}/libvirt/schemas/nwfilter.rng
 
 %{_datadir}/libvirt/cpu_map.xml
+
+%{_sysconfdir}/rc.d/init.d/libvirt-guests
+%config(noreplace) %{_sysconfdir}/sysconfig/libvirt-guests
+%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt
 
 %if %{with_sasl}
 %config(noreplace) %{_sysconfdir}/sasl2/libvirt.conf
