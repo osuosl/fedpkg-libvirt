@@ -204,10 +204,11 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 0.8.8
-Release: 1%{?dist}%{?extra_release}
+Release: 2%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
+Patch1: %{name}-%{version}-kernel-boot-index.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python-devel
@@ -454,6 +455,7 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+%patch1 -p1
 
 %build
 %if ! %{with_xen}
@@ -973,6 +975,9 @@ fi
 %endif
 
 %changelog
+* Mon Feb 21 2011 Daniel P. Berrange <berrange@redhat.com> - 0.8.8-2
+- Fix kernel boot with latest QEMU
+
 * Thu Feb 17 2011 Daniel Veillard <veillard@redhat.com> - 0.8.8-1
 - expose new API for sysinfo extraction
 - cgroup blkio weight support
