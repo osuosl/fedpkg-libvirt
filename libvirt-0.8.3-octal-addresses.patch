@@ -1,0 +1,53 @@
+From 8efebd1761700a0cc32736829aead7807cc7865d Mon Sep 17 00:00:00 2001
+From: =?utf8?q?Diego=20Elio=20Petten=C3=B2?= <flameeyes@gmail.com>
+Date: Tue, 26 Oct 2010 14:45:03 +0200
+Subject: [PATCH] qemu: don't use %.3d format for bus/addr of USB devices
+
+When using 0-prefixed numbers, QEmu will interpret them as octal numbers
+(as C convention says); this means that if you attach a device that has
+addr > 10 (decimal) you're going to attach a different device.
+---
+ src/qemu/qemu_conf.c                               |    4 ++--
+ .../qemuxml2argv-hostdev-usb-address-device.args   |    2 +-
+ .../qemuxml2argv-hostdev-usb-address.args          |    2 +-
+ 3 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/qemu/qemu_conf.c b/src/qemu/qemu_conf.c
+index 00e89a1..5bd3d4c 100644
+--- a/src/qemu/qemu_conf.c
++++ b/src/qemu/qemu_conf.c
+@@ -3266,7 +3266,7 @@ qemuBuildUSBHostdevDevStr(virDomainHostdevDefPtr dev)
+         return NULL;
+     }
+ 
+-    if (virAsprintf(&ret, "usb-host,hostbus=%.3d,hostaddr=%.3d,id=%s",
++    if (virAsprintf(&ret, "usb-host,hostbus=%d,hostaddr=%d,id=%s",
+                     dev->source.subsys.u.usb.bus,
+                     dev->source.subsys.u.usb.device,
+                     dev->info.alias) < 0)
+@@ -3288,7 +3288,7 @@ qemuBuildUSBHostdevUsbDevStr(virDomainHostdevDefPtr dev)
+         return NULL;
+     }
+ 
+-    if (virAsprintf(&ret, "host:%.3d.%.3d",
++    if (virAsprintf(&ret, "host:%d.%d",
+                     dev->source.subsys.u.usb.bus,
+                     dev->source.subsys.u.usb.device) < 0)
+         virReportOOMError();
+diff --git a/tests/qemuxml2argvdata/qemuxml2argv-hostdev-usb-address-device.args b/tests/qemuxml2argvdata/qemuxml2argv-hostdev-usb-address-device.args
+index 6900fd3..7e42542 100644
+--- a/tests/qemuxml2argvdata/qemuxml2argv-hostdev-usb-address-device.args
++++ b/tests/qemuxml2argvdata/qemuxml2argv-hostdev-usb-address-device.args
+@@ -1 +1 @@
+-LC_ALL=C PATH=/bin HOME=/home/test USER=test LOGNAME=test /usr/bin/qemu -S -M pc -m 214 -smp 1 -nographic -nodefconfig -nodefaults -monitor unix:/tmp/test-monitor,server,nowait -no-acpi -boot c -hda /dev/HostVG/QEMUGuest1 -usb -device usb-host,hostbus=014,hostaddr=006,id=hostdev0 -device virtio-balloon-pci,id=balloon0,bus=pci.0,addr=0x2
++LC_ALL=C PATH=/bin HOME=/home/test USER=test LOGNAME=test /usr/bin/qemu -S -M pc -m 214 -smp 1 -nographic -nodefconfig -nodefaults -monitor unix:/tmp/test-monitor,server,nowait -no-acpi -boot c -hda /dev/HostVG/QEMUGuest1 -usb -device usb-host,hostbus=14,hostaddr=6,id=hostdev0 -device virtio-balloon-pci,id=balloon0,bus=pci.0,addr=0x2
+diff --git a/tests/qemuxml2argvdata/qemuxml2argv-hostdev-usb-address.args b/tests/qemuxml2argvdata/qemuxml2argv-hostdev-usb-address.args
+index e57bec1..96e004d 100644
+--- a/tests/qemuxml2argvdata/qemuxml2argv-hostdev-usb-address.args
++++ b/tests/qemuxml2argvdata/qemuxml2argv-hostdev-usb-address.args
+@@ -1 +1 @@
+-LC_ALL=C PATH=/bin HOME=/home/test USER=test LOGNAME=test /usr/bin/qemu -S -M pc -m 214 -smp 1 -nographic -monitor unix:/tmp/test-monitor,server,nowait -no-acpi -boot c -hda /dev/HostVG/QEMUGuest1 -net none -serial none -parallel none -usb -usbdevice host:014.006
++LC_ALL=C PATH=/bin HOME=/home/test USER=test LOGNAME=test /usr/bin/qemu -S -M pc -m 214 -smp 1 -nographic -monitor unix:/tmp/test-monitor,server,nowait -no-acpi -boot c -hda /dev/HostVG/QEMUGuest1 -net none -serial none -parallel none -usb -usbdevice host:14.6
+-- 
+1.7.3.4
+

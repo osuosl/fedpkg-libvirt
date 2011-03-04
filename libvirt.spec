@@ -185,11 +185,12 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.8.3
-Release: 3%{?dist}%{?extra_release}.1
+Release: 4%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
 Patch1: %{name}-%{version}-boot-menu.patch
+Patch2: %{name}-%{version}-octal-addresses.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python-devel
@@ -426,6 +427,7 @@ of recent versions of Linux (and other OSes).
 %prep
 %setup -q
 %patch1 -p1
+%patch2 -p1
 
 %build
 %if ! %{with_xen}
@@ -917,6 +919,9 @@ fi
 %endif
 
 %changelog
+* Fri Mar  4 2011 Daniel Veillard <veillard@redhat.com> 0.8.3-4
+- fix problem parsing octal addresses bug 653883
+
 * Wed Sep 29 2010 jkeating - 0.8.3-3.1
 - Rebuilt for gcc bug 634757
 
