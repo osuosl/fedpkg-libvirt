@@ -185,7 +185,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.8.2
-Release: 1%{?dist}%{?extra_release}
+Release: 2%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -203,6 +203,8 @@ Patch10: libvirt-0.8.2-10-qemu-img-format-handling.patch
 Patch11: libvirt-0.8.2-11-storage-vol-backing.patch
 # CVE-2010-2242
 Patch12: libvirt-0.8.2-apply-iptables-sport-mapping.patch
+# CVE-2011-1146
+Patch13: libvirt-0.8.2-read-only-checks.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python-devel
@@ -450,6 +452,7 @@ of recent versions of Linux (and other OSes).
 %patch10 -p1
 %patch11 -p1
 %patch12 -p1
+%patch13 -p0
 
 %build
 %if ! %{with_xen}
@@ -937,6 +940,9 @@ fi
 %endif
 
 %changelog
+* Tue Mar 15 2011 Daniel Veillard <veillard@redhat.com> - 0.8.2-2
+- Fix for CVE-2011-1146, missing checks on read-only connections bug 683655
+
 * Thu Jun 17 2010 Cole Robinson <crobinso@redhat.com> - 0.7.7-5.fc13
 - Add qemu.conf options for audio workaround
 - Fix parsing certain USB sysfs files (bz 598272)
