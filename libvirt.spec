@@ -185,12 +185,13 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.8.3
-Release: 4%{?dist}%{?extra_release}
+Release: 5%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
 Patch1: %{name}-%{version}-boot-menu.patch
 Patch2: %{name}-%{version}-octal-addresses.patch
+Patch3: %{name}-%{version}-read-only-checks.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python-devel
@@ -428,6 +429,7 @@ of recent versions of Linux (and other OSes).
 %setup -q
 %patch1 -p1
 %patch2 -p1
+%patch3 -p0
 
 %build
 %if ! %{with_xen}
@@ -919,6 +921,10 @@ fi
 %endif
 
 %changelog
+* Tue Mar 15 2011 Daniel Veillard <veillard@redhat.com> 0.8.3-5
+- fix a lack of API check on read-only connections 683655
+- CVE-2011-1146
+
 * Fri Mar  4 2011 Daniel Veillard <veillard@redhat.com> 0.8.3-4
 - fix problem parsing octal addresses bug 653883
 

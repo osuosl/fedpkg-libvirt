@@ -1,0 +1,95 @@
+From: Guido Günther <agx@sigxcpu.org>
+Date: Mon, 14 Mar 2011 02:56:28 +0000 (+0800)
+Subject: Add missing checks for read only connections
+X-Git-Url: http://libvirt.org/git/?p=libvirt.git;a=commitdiff_plain;h=71753cb7f7a16ff800381c0b5ee4e99eea92fed3;hp=13c00dde3171b3a38d23cceb3f9151cb6cac3dad
+
+Add missing checks for read only connections
+
+As pointed on CVE-2011-1146, some API forgot to check the read-only
+status of the connection for entry point which modify the state
+of the system or may lead to a remote execution using user data.
+The entry points concerned are:
+  - virConnectDomainXMLToNative
+  - virNodeDeviceDettach
+  - virNodeDeviceReAttach
+  - virNodeDeviceReset
+  - virDomainRevertToSnapshot
+  - virDomainSnapshotDelete
+
+* src/libvirt.c: fix the above set of entry points to error on read-only
+                 connections
+
+Rebased to 0.8.2, mostly changed the call of the error routines
+---
+
+--- src/libvirt.c.orig	2011-03-14 17:03:45.000000000 +0800
++++ src/libvirt.c	2011-03-14 17:10:41.000000000 +0800
+@@ -3190,6 +3190,10 @@ char *virConnectDomainXMLToNative(virCon
+         virDispatchError(NULL);
+         return (NULL);
+     }
++    if (conn->flags & VIR_CONNECT_RO) {
++        virLibDomainError(NULL, VIR_ERR_OPERATION_DENIED, __FUNCTION__);
++        goto error;
++    }
+ 
+     if (nativeFormat == NULL || domainXml == NULL) {
+         virLibConnError(conn, VIR_ERR_INVALID_ARG, __FUNCTION__);
+@@ -9432,6 +9436,11 @@ virNodeDeviceDettach(virNodeDevicePtr de
+         return (-1);
+     }
+ 
++    if (dev->conn->flags & VIR_CONNECT_RO) {
++        virLibConnError(dev->conn, VIR_ERR_OPERATION_DENIED, __FUNCTION__);
++        goto error;
++    }
++
+     if (dev->conn->driver->nodeDeviceDettach) {
+         int ret;
+         ret = dev->conn->driver->nodeDeviceDettach (dev);
+@@ -9475,6 +9484,11 @@ virNodeDeviceReAttach(virNodeDevicePtr d
+         return (-1);
+     }
+ 
++    if (dev->conn->flags & VIR_CONNECT_RO) {
++        virLibConnError(dev->conn, VIR_ERR_OPERATION_DENIED, __FUNCTION__);
++        goto error;
++    }
++
+     if (dev->conn->driver->nodeDeviceReAttach) {
+         int ret;
+         ret = dev->conn->driver->nodeDeviceReAttach (dev);
+@@ -9520,6 +9534,11 @@ virNodeDeviceReset(virNodeDevicePtr dev)
+         return (-1);
+     }
+ 
++    if (dev->conn->flags & VIR_CONNECT_RO) {
++        virLibConnError(dev->conn, VIR_ERR_OPERATION_DENIED, __FUNCTION__);
++        goto error;
++    }
++
+     if (dev->conn->driver->nodeDeviceReset) {
+         int ret;
+         ret = dev->conn->driver->nodeDeviceReset (dev);
+@@ -12775,6 +12794,10 @@ virDomainRevertToSnapshot(virDomainSnaps
+     }
+ 
+     conn = snapshot->domain->conn;
++    if (conn->flags & VIR_CONNECT_RO) {
++        virLibConnError(conn, VIR_ERR_OPERATION_DENIED, __FUNCTION__);
++        goto error;
++    }
+ 
+     if (conn->driver->domainRevertToSnapshot) {
+         int ret = conn->driver->domainRevertToSnapshot(snapshot, flags);
+@@ -12821,6 +12844,10 @@ virDomainSnapshotDelete(virDomainSnapsho
+     }
+ 
+     conn = snapshot->domain->conn;
++    if (conn->flags & VIR_CONNECT_RO) {
++        virLibConnError(conn, VIR_ERR_OPERATION_DENIED, __FUNCTION__);
++        goto error;
++    }
+ 
+     if (conn->driver->domainSnapshotDelete) {
+         int ret = conn->driver->domainSnapshotDelete(snapshot, flags);
