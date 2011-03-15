@@ -204,11 +204,12 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 0.8.8
-Release: 2%{?dist}%{?extra_release}
+Release: 3%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
 Patch1: %{name}-%{version}-kernel-boot-index.patch
+Patch2: %{name}-%{version}-read-only-checks.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python-devel
@@ -456,6 +457,7 @@ of recent versions of Linux (and other OSes).
 %prep
 %setup -q
 %patch1 -p1
+%patch2 -p1
 
 %build
 %if ! %{with_xen}
@@ -975,6 +977,10 @@ fi
 %endif
 
 %changelog
+* Tue Mar 15 2011 Daniel Veillard <veillard@redhat.com> - 0.8.8-3
+- fix a lack of API check on read-only connections 683655
+- CVE-2011-1146
+
 * Mon Feb 21 2011 Daniel P. Berrange <berrange@redhat.com> - 0.8.8-2
 - Fix kernel boot with latest QEMU
 
