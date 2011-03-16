@@ -29,7 +29,7 @@ Rebased to 0.8.2, mostly changed the call of the error routines
          return (NULL);
      }
 +    if (conn->flags & VIR_CONNECT_RO) {
-+        virLibDomainError(NULL, VIR_ERR_OPERATION_DENIED, __FUNCTION__);
++        virLibConnError(NULL, VIR_ERR_OPERATION_DENIED, __FUNCTION__);
 +        goto error;
 +    }
  

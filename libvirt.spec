@@ -185,7 +185,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.8.3
-Release: 5%{?dist}%{?extra_release}
+Release: 6%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -921,6 +921,9 @@ fi
 %endif
 
 %changelog
+* Wed Mar 16 2011 Daniel Veillard <veillard@redhat.com> 0.8.3-6
+- fix one crash in the the error handling for previous patch
+
 * Tue Mar 15 2011 Daniel Veillard <veillard@redhat.com> 0.8.3-5
 - fix a lack of API check on read-only connections 683655
 - CVE-2011-1146
