@@ -185,13 +185,15 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.8.3
-Release: 6%{?dist}%{?extra_release}
+Release: 7%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
 Patch1: %{name}-%{version}-boot-menu.patch
 Patch2: %{name}-%{version}-octal-addresses.patch
 Patch3: %{name}-%{version}-read-only-checks.patch
+Patch4: %{name}-%{version}-fix-var-lib-libvirt-permissions.patch
+
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python-devel
@@ -430,6 +432,7 @@ of recent versions of Linux (and other OSes).
 %patch1 -p1
 %patch2 -p1
 %patch3 -p0
+%patch4 -p1
 
 %build
 %if ! %{with_xen}
@@ -785,7 +788,6 @@ fi
 
 %dir %{_localstatedir}/run/libvirt/
 
-%dir %{_localstatedir}/lib/libvirt/
 %dir %attr(0711, root, root) %{_localstatedir}/lib/libvirt/images/
 %dir %attr(0711, root, root) %{_localstatedir}/lib/libvirt/boot/
 %dir %attr(0700, root, root) %{_localstatedir}/cache/libvirt/
@@ -879,7 +881,7 @@ fi
 
 %{_sysconfdir}/rc.d/init.d/libvirt-guests
 %config(noreplace) %{_sysconfdir}/sysconfig/libvirt-guests
-%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt
+%dir %attr(0755, root, root) %{_localstatedir}/lib/libvirt
 
 %if %{with_sasl}
 %config(noreplace) %{_sysconfdir}/sasl2/libvirt.conf
@@ -921,6 +923,9 @@ fi
 %endif
 
 %changelog
+* Mon Apr  4 2011 Laine Stump <laine@redhat.com> 0.8.3-7
+- fix permissions on /var/lib/libvirt
+
 * Wed Mar 16 2011 Daniel Veillard <veillard@redhat.com> 0.8.3-6
 - fix one crash in the the error handling for previous patch
 
