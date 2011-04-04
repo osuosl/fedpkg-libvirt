@@ -1,0 +1,44 @@
+From f970d802ab805f1a37af384f148f34e108714034 Mon Sep 17 00:00:00 2001
+From: Eric Blake <eblake@redhat.com>
+Date: Wed, 3 Nov 2010 15:20:24 -0600
+Subject: [PATCH] rpm: fix /var/lib/libvirt permissions
+
+https://bugzilla.redhat.com/show_bug.cgi?id=649511
+
+Regression of forcing 0700 permissions (which breaks guest startup
+because the qemu user can't see /var/lib/libvirt/*.monitor) was
+introduced in commit 66823690e, as part of libvirt 0.8.2.
+
+* libvirt.spec.in (%files): Drop %{_localstatedir}/lib/libvirt,
+since libvirt depends on libvirt-client.
+(%files client): Guarantee 755 permissions on
+%(_localstatedir}/lib/libvirt, since the qemu user must be able to
+do pathname resolution to a subdirectory.
+---
+ libvirt.spec.in |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
+
+diff --git a/libvirt.spec.in b/libvirt.spec.in
+index 813e0c0..f77626e 100644
+--- a/libvirt.spec.in
++++ b/libvirt.spec.in
+@@ -770,7 +770,6 @@ fi
+ 
+ %dir %{_localstatedir}/run/libvirt/
+ 
+-%dir %{_localstatedir}/lib/libvirt/
+ %dir %attr(0711, root, root) %{_localstatedir}/lib/libvirt/images/
+ %dir %attr(0711, root, root) %{_localstatedir}/lib/libvirt/boot/
+ %dir %attr(0700, root, root) %{_localstatedir}/cache/libvirt/
+@@ -862,7 +861,7 @@ fi
+ 
+ %{_sysconfdir}/rc.d/init.d/libvirt-guests
+ %config(noreplace) %{_sysconfdir}/sysconfig/libvirt-guests
+-%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt
++%dir %attr(0755, root, root) %{_localstatedir}/lib/libvirt/
+ 
+ %if %{with_sasl}
+ %config(noreplace) %{_sysconfdir}/sasl2/libvirt.conf
+-- 
+1.7.3.4
+

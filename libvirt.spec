@@ -185,7 +185,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.8.2
-Release: 3%{?dist}%{?extra_release}
+Release: 4%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -205,6 +205,7 @@ Patch11: libvirt-0.8.2-11-storage-vol-backing.patch
 Patch12: libvirt-0.8.2-apply-iptables-sport-mapping.patch
 # CVE-2011-1146
 Patch13: libvirt-0.8.2-read-only-checks.patch
+Patch14: libvirt-0.8.2-fix-var-lib-libvirt-permissions.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python-devel
@@ -453,6 +454,7 @@ of recent versions of Linux (and other OSes).
 %patch11 -p1
 %patch12 -p1
 %patch13 -p0
+%patch14 -p1
 
 %build
 %if ! %{with_xen}
@@ -940,6 +942,9 @@ fi
 %endif
 
 %changelog
+* Mon Apr  4 2011 Laine Stump <laine@redhat.com> 0.8.2-4
+- fix permissions on /var/lib/libvirt
+
 * Wed Mar 16 2011 Daniel Veillard <veillard@redhat.com> - 0.8.2-3
 - fix one crash in the the error handling for previous patch
 
