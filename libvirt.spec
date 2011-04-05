@@ -185,7 +185,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.8.3
-Release: 8%{?dist}%{?extra_release}
+Release: 9%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -928,7 +928,10 @@ fi
 %endif
 
 %changelog
-* Tue Apr  5 2011 Laine Stump <laine@redhat.com> 0.8.2-8
+* Tue Apr  5 2011 Laine Stump <laine@redhat.com> 0.8.3-9
+- Fix incorrect release version in specfile ChangeLog
+
+* Tue Apr  5 2011 Laine Stump <laine@redhat.com> 0.8.3-8
 - Fix for CVE-2011-1486, error reporting in libvirtd is not thread safe,
   bug 693457
 
