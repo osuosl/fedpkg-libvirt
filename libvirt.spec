@@ -185,7 +185,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.8.2
-Release: 4%{?dist}%{?extra_release}
+Release: 5%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -206,6 +206,10 @@ Patch12: libvirt-0.8.2-apply-iptables-sport-mapping.patch
 # CVE-2011-1146
 Patch13: libvirt-0.8.2-read-only-checks.patch
 Patch14: libvirt-0.8.2-fix-var-lib-libvirt-permissions.patch
+# Patches 15, 16  CVE-2011-1486
+Patch15: libvirt-0.8.2-threadsafe-libvirtd-error-reporting.patch
+Patch16: libvirt-0.8.2-avoid-resetting-errors.patch
+
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python-devel
@@ -455,6 +459,8 @@ of recent versions of Linux (and other OSes).
 %patch12 -p1
 %patch13 -p0
 %patch14 -p1
+%patch15 -p1
+%patch16 -p1
 
 %build
 %if ! %{with_xen}
@@ -942,6 +948,10 @@ fi
 %endif
 
 %changelog
+* Mon Apr  4 2011 Laine Stump <laine@redhat.com> 0.8.2-5
+- Fix for CVE-2011-1486, error reporting in libvirtd is not thread safe,
+  bug 693457
+
 * Mon Apr  4 2011 Laine Stump <laine@redhat.com> 0.8.2-4
 - fix permissions on /var/lib/libvirt
 
