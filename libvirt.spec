@@ -185,7 +185,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.8.2
-Release: 5%{?dist}%{?extra_release}
+Release: 6%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -815,7 +815,6 @@ fi
 
 %dir %{_localstatedir}/run/libvirt/
 
-%dir %{_localstatedir}/lib/libvirt/
 %dir %attr(0711, root, root) %{_localstatedir}/lib/libvirt/images/
 %dir %attr(0711, root, root) %{_localstatedir}/lib/libvirt/boot/
 %dir %attr(0700, root, root) %{_localstatedir}/cache/libvirt/
@@ -907,7 +906,7 @@ fi
 
 %{_sysconfdir}/rc.d/init.d/libvirt-guests
 %config(noreplace) %{_sysconfdir}/sysconfig/libvirt-guests
-%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt
+%dir %attr(0755, root, root) %{_localstatedir}/lib/libvirt
 
 %if %{with_sasl}
 %config(noreplace) %{_sysconfdir}/sasl2/libvirt.conf
@@ -948,7 +947,10 @@ fi
 %endif
 
 %changelog
-* Mon Apr  4 2011 Laine Stump <laine@redhat.com> 0.8.2-5
+* Tue Apr  5 2011 Laine Stump <laine@redhat.com> 0.8.2-6
+- Add changes to fedora-specific libvirt.spec forgotten in 0.8.2-4
+
+* Tue Apr  5 2011 Laine Stump <laine@redhat.com> 0.8.2-5
 - Fix for CVE-2011-1486, error reporting in libvirtd is not thread safe,
   bug 693457
 
