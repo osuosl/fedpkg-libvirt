@@ -1,0 +1,40 @@
+From e03899ff772cb753f02ecc99c81776a95c8e3d59 Mon Sep 17 00:00:00 2001
+From: Osier Yang <jyang@redhat.com>
+Date: Fri, 18 Feb 2011 13:45:13 +0800
+Subject: [PATCH 2/6] Requires gettext for client package
+
+https://bugzilla.redhat.com/show_bug.cgi?id=680270
+libvirt-client is missing some dependencies
+
+libvirt-guests invokes functions in gettext.sh, so we need to
+require gettext package in spec file.
+
+Demo with the fix:
+% rpm -q gettext
+package gettext is not installed
+
+% rpm -ivh libvirt-client-0.8.8-1.fc14.x86_64.rpm
+error: Failed dependencies:
+	gettext is needed by libvirt-client-0.8.8-1.fc14.x86_64
+
+* libvirt.spec.in
+---
+ libvirt.spec.in |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/libvirt.spec.in b/libvirt.spec.in
+index d4208e8..c08b186 100644
+--- a/libvirt.spec.in
++++ b/libvirt.spec.in
+@@ -415,6 +415,8 @@ Requires: ncurses
+ # So remote clients can access libvirt over SSH tunnel
+ # (client invokes 'nc' against the UNIX socket on the server)
+ Requires: nc
++# Needed by libvirt-guests init script.
++Requires: gettext
+ %if %{with_sasl}
+ Requires: cyrus-sasl
+ # Not technically required, but makes 'out-of-box' config
+-- 
+1.7.3.4
+

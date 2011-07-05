@@ -1,0 +1,30 @@
+From 29680e00f67bad9145387022ea0d3c307465d3dc Mon Sep 17 00:00:00 2001
+From: Eric Blake <eblake@redhat.com>
+Date: Mon, 21 Feb 2011 10:43:29 -0700
+Subject: [PATCH 4/6] build: add dependency on gnutls-utils
+
+https://bugzilla.redhat.com/show_bug.cgi?id=680270
+libvirt-client is missing some dependencies
+
+* libvirt.spec.in (Requires): Add gnutls-utils, for virt-pki-validate.
+Suggested by Daniel P. Berrange.
+---
+ libvirt.spec.in |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/libvirt.spec.in b/libvirt.spec.in
+index c08b186..23f4525 100644
+--- a/libvirt.spec.in
++++ b/libvirt.spec.in
+@@ -417,6 +417,8 @@ Requires: ncurses
+ Requires: nc
+ # Needed by libvirt-guests init script.
+ Requires: gettext
++# Needed by virt-pki-validate script.
++Requires: gnutls-utils
+ %if %{with_sasl}
+ Requires: cyrus-sasl
+ # Not technically required, but makes 'out-of-box' config
+-- 
+1.7.3.4
+

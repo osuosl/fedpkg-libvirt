@@ -204,7 +204,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 0.8.8
-Release: 4%{?dist}%{?extra_release}
+Release: 5%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -213,6 +213,12 @@ Patch2: %{name}-%{version}-read-only-checks.patch
 # Patches 5, 6  CVE-2011-1486
 Patch3: %{name}-%{version}-threadsafe-libvirtd-error-reporting.patch
 Patch4: %{name}-%{version}-avoid-resetting-errors.patch
+Patch5: %{name}-%{version}-security-plug-regression-introduced-in-disk-probe-lo.patch
+Patch6: %{name}-%{version}-Requires-gettext-for-client-package.patch
+Patch7: %{name}-%{version}-virt-pki-validate-behave-when-CERTTOOL-is-missing.patch
+Patch8: %{name}-%{version}-build-add-dependency-on-gnutls-utils.patch
+Patch9: %{name}-%{version}-rpm-add-missing-dependencies.patch
+Patch10: %{name}-%{version}-remote-protect-against-integer-overflow.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python-devel
@@ -224,15 +230,21 @@ Requires: %{name}-client = %{version}-%{release}
 # daemon is present
 %if %{with_libvirtd}
 Requires: bridge-utils
+# for modprobe of pci devices
+Requires: module-init-tools
+# for /sbin/ip
+Requires: iproute
 %endif
 %if %{with_network}
 Requires: dnsmasq >= 2.41
+Requires: radvd
+%endif
+%if %{with_network} || %{with_nwfilter}
 Requires: iptables
+Requires: iptables-ipv6
 %endif
 %if %{with_nwfilter}
 Requires: ebtables
-Requires: iptables
-Requires: iptables-ipv6
 %endif
 # needed for device enumeration
 %if %{with_hal}
@@ -300,10 +312,15 @@ BuildRequires: xmlrpc-c-devel >= 1.14.0
 %endif
 BuildRequires: libxml2-devel
 BuildRequires: xhtml1-dtds
+BuildRequires: libxslt
 BuildRequires: readline-devel
 BuildRequires: ncurses-devel
 BuildRequires: gettext
 BuildRequires: gnutls-devel
+%if 0%{?fedora} >= 12 || 0%{?rhel} >= 6
+# for augparse, optionally used in testing
+BuildRequires: augeas
+%endif
 %if %{with_hal}
 BuildRequires: hal-devel
 %endif
@@ -328,8 +345,15 @@ BuildRequires: libselinux-devel
 %endif
 %if %{with_network}
 BuildRequires: dnsmasq >= 2.41
+BuildRequires: iptables
+BuildRequires: iptables-ipv6
+BuildRequires: radvd
+%endif
+%if %{with_nwfilter}
+BuildRequires: ebtables
 %endif
 BuildRequires: bridge-utils
+BuildRequires: module-init-tools
 %if %{with_sasl}
 BuildRequires: cyrus-sasl-devel
 %endif
@@ -393,7 +417,11 @@ BuildRequires: libssh2-devel
 BuildRequires: netcf-devel >= 0.1.4
 %endif
 %if %{with_esx}
+%if 0%{?fedora} >= 9 || 0%{?rhel} >= 6
 BuildRequires: libcurl-devel
+%else
+BuildRequires: curl-devel
+%endif
 %endif
 %if %{with_audit}
 BuildRequires: audit-libs-devel
@@ -420,6 +448,10 @@ Requires: ncurses
 # So remote clients can access libvirt over SSH tunnel
 # (client invokes 'nc' against the UNIX socket on the server)
 Requires: nc
+# Needed by libvirt-guests init script.
+Requires: gettext
+# Needed by virt-pki-validate script.
+Requires: gnutls-utils
 %if %{with_sasl}
 Requires: cyrus-sasl
 # Not technically required, but makes 'out-of-box' config
@@ -463,6 +495,12 @@ of recent versions of Linux (and other OSes).
 %patch2 -p1
 %patch3 -p1
 %patch4 -p1
+%patch5 -p1
+%patch6 -p1
+%patch7 -p1
+%patch8 -p1
+%patch9 -p1
+%patch10 -p1
 
 %build
 %if ! %{with_xen}
@@ -982,6 +1020,14 @@ fi
 %endif
 
 %changelog
+* Tue Jul  5 2011 Laine Stump <laine@redhat.com> 0.8.8-5
+- Fix for CVE-2011-2178, regression introduced in disk probe logic,
+  Bug 709775
+- Fix for CVE-2011-2511, integer overflow in VirDomainGetVcpus,
+  Bug 717204
+- Add several build and runtime dependencies to specfile
+  Bug 680270
+
 * Tue Apr  5 2011 Laine Stump <laine@redhat.com> 0.8.8-4
 - Fix for CVE-2011-1486, error reporting in libvirtd is not thread safe,
   bug 693457

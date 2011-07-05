@@ -1,0 +1,115 @@
+From 9388aeabcbb06ec93845b6d066148ad4cfe1dd9e Mon Sep 17 00:00:00 2001
+From: Eric Blake <eblake@redhat.com>
+Date: Fri, 24 Jun 2011 12:16:05 -0600
+Subject: [PATCH 6/6] remote: protect against integer overflow
+
+https://bugzilla.redhat.com/show_bug.cgi?id=717204
+CVE-2011-2511 - integer overflow in VirDomainGetVcpus
+
+Integer overflow and remote code are never a nice mix.
+
+This has existed since commit 56cd414.
+
+* src/libvirt.c (virDomainGetVcpus): Reject overflow up front.
+* src/remote/remote_driver.c (remoteDomainGetVcpus): Avoid overflow
+  on sending rpc.
+* daemon/remote.c (remoteDispatchDomainGetVcpus): Avoid overflow on
+  receiving rpc.
+
+(cherry picked from commit 774b21c163845170c9ffa873f5720d318812eaf6)
+
+Conflicts:
+
+	daemon/remote.c
+	src/remote/remote_driver.c
+
+Change to internal.h required to avoid backporting 89d994ad.
+---
+ daemon/remote.c            |    3 ++-
+ src/internal.h             |   17 +++++++++++++++++
+ src/libvirt.c              |    5 +++--
+ src/remote/remote_driver.c |    3 ++-
+ 4 files changed, 24 insertions(+), 4 deletions(-)
+
+diff --git a/daemon/remote.c b/daemon/remote.c
+index 159430e..b707326 100644
+--- a/daemon/remote.c
++++ b/daemon/remote.c
+@@ -1722,7 +1722,8 @@ remoteDispatchDomainGetVcpus (struct qemud_server *server ATTRIBUTE_UNUSED,
+         return -1;
+     }
+ 
+-    if (args->maxinfo * args->maplen > REMOTE_CPUMAPS_MAX) {
++    if (INT_MULTIPLY_OVERFLOW(args->maxinfo, args->maplen) ||
++        args->maxinfo * args->maplen > REMOTE_CPUMAPS_MAX) {
+         virDomainFree(dom);
+         remoteDispatchFormatError (rerr, "%s", _("maxinfo * maplen > REMOTE_CPUMAPS_MAX"));
+         return -1;
+diff --git a/src/internal.h b/src/internal.h
+index e263684..f47b842 100644
+--- a/src/internal.h
++++ b/src/internal.h
+@@ -232,6 +232,23 @@
+         }                                                               \
+     } while (0)
+ 
++/* branch-specific: we don't want to update gnulib on the branch, so this
++ * backports just one required macro from newer gnulib's intprops.h.
++ * This version requires that both a and b are 'int', rather than
++ * the fully type-generic version from gnulib.  */
++# define INT_MULTIPLY_OVERFLOW(a, b)            \
++    ((b) < 0                                    \
++     ? ((a) < 0                                 \
++        ? (a) < INT_MAX / (b)                   \
++        : (b) == -1                             \
++        ? 0                                     \
++        : INT_MIN / (b) < (a))                  \
++     : (b) == 0                                 \
++     ? 0                                        \
++     : ((a) < 0                                 \
++        ? (a) < INT_MIN / (b)                   \
++        : INT_MAX / (b) < (a)))
++
+ /* divide value by size, rounding up */
+ # define VIR_DIV_UP(value, size) (((value) + (size) - 1) / (size))
+ 
+diff --git a/src/libvirt.c b/src/libvirt.c
+index 8c70a1f..d8ab8f8 100644
+--- a/src/libvirt.c
++++ b/src/libvirt.c
+@@ -40,6 +40,7 @@
+ #include "util.h"
+ #include "memory.h"
+ #include "configmake.h"
++#include "intprops.h"
+ 
+ #ifndef WITH_DRIVER_MODULES
+ # ifdef WITH_TEST
+@@ -5363,8 +5364,8 @@ virDomainGetVcpus(virDomainPtr domain, virVcpuInfoPtr info, int maxinfo,
+ 
+     /* Ensure that domainGetVcpus (aka remoteDomainGetVcpus) does not
+        try to memcpy anything into a NULL pointer.  */
+-    if ((cpumaps == NULL && maplen != 0)
+-        || (cpumaps && maplen <= 0)) {
++    if (!cpumaps ? maplen != 0
++        : (maplen <= 0 || INT_MULTIPLY_OVERFLOW(maxinfo, maplen))) {
+         virLibDomainError(VIR_ERR_INVALID_ARG, __FUNCTION__);
+         goto error;
+     }
+diff --git a/src/remote/remote_driver.c b/src/remote/remote_driver.c
+index 4ca0d3b..c73452e 100644
+--- a/src/remote/remote_driver.c
++++ b/src/remote/remote_driver.c
+@@ -2850,7 +2850,8 @@ remoteDomainGetVcpus (virDomainPtr domain,
+                     maxinfo, REMOTE_VCPUINFO_MAX);
+         goto done;
+     }
+-    if (maxinfo * maplen > REMOTE_CPUMAPS_MAX) {
++    if (INT_MULTIPLY_OVERFLOW(maxinfo, maplen) ||
++        maxinfo * maplen > REMOTE_CPUMAPS_MAX) {
+         remoteError(VIR_ERR_RPC,
+                     _("vCPU map buffer length exceeds maximum: %d > %d"),
+                     maxinfo * maplen, REMOTE_CPUMAPS_MAX);
+-- 
+1.7.3.4
+
