@@ -204,7 +204,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 0.8.8
-Release: 6%{?dist}%{?extra_release}
+Release: 7%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -1022,6 +1022,9 @@ fi
 %endif
 
 %changelog
+* Wed Jul  5 2011 Laine Stump <laine@redhat.com> - 0.8.8-7
+- Make commandtest more robust.
+
 * Wed Jul  5 2011 Peter Robinson <pbrobinson@gmail.com> - 0.8.8-6
 - Add ARM to NUMA excludes
 
@@ -1032,7 +1035,6 @@ fi
   Bug 717204
 - Add several build and runtime dependencies to specfile
   Bug 680270
-- Make commandtest more robust.
 
 * Tue Apr  5 2011 Laine Stump <laine@redhat.com> 0.8.8-4
 - Fix for CVE-2011-1486, error reporting in libvirtd is not thread safe,
