@@ -185,7 +185,7 @@
 Summary: Library providing a simple API virtualization
 Name: libvirt
 Version: 0.8.3
-Release: 9%{?dist}%{?extra_release}
+Release: 10%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -196,6 +196,8 @@ Patch4: %{name}-%{version}-fix-var-lib-libvirt-permissions.patch
 # Patches 5, 6  CVE-2011-1486
 Patch5: %{name}-%{version}-threadsafe-libvirtd-error-reporting.patch
 Patch6: %{name}-%{version}-avoid-resetting-errors.patch
+# Patch 7  CVE-2011-2511
+Patch7: %{name}-%{version}-remote-protect-against-integer-overflow.patch
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
@@ -438,6 +440,7 @@ of recent versions of Linux (and other OSes).
 %patch4 -p1
 %patch5 -p1
 %patch6 -p1
+%patch7 -p1
 
 %build
 %if ! %{with_xen}
@@ -928,6 +931,10 @@ fi
 %endif
 
 %changelog
+* Tue Jul  5 2011 Laine Stump <laine@redhat.com> 0.8.3-10
+- Fix for CVE-2011-2511, integer overflow in VirDomainGetVcpus,
+  Bug 717204
+
 * Tue Apr  5 2011 Laine Stump <laine@redhat.com> 0.8.3-9
 - Fix incorrect release version in specfile ChangeLog
 
