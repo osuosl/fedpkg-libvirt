@@ -219,6 +219,7 @@ Patch7: %{name}-%{version}-virt-pki-validate-behave-when-CERTTOOL-is-missing.pat
 Patch8: %{name}-%{version}-build-add-dependency-on-gnutls-utils.patch
 Patch9: %{name}-%{version}-rpm-add-missing-dependencies.patch
 Patch10: %{name}-%{version}-remote-protect-against-integer-overflow.patch
+Patch11: %{name}-%{version}-make-commandtest-more-robust.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 BuildRequires: python-devel
@@ -501,6 +502,7 @@ of recent versions of Linux (and other OSes).
 %patch8 -p1
 %patch9 -p1
 %patch10 -p1
+%patch11 -p1
 
 %build
 %if ! %{with_xen}
@@ -1030,6 +1032,7 @@ fi
   Bug 717204
 - Add several build and runtime dependencies to specfile
   Bug 680270
+- Make commandtest more robust.
 
 * Tue Apr  5 2011 Laine Stump <laine@redhat.com> 0.8.8-4
 - Fix for CVE-2011-1486, error reporting in libvirtd is not thread safe,
