@@ -82,8 +82,8 @@
 %define with_xen 0
 %endif
 
-# Numactl is not available on s390[x]
-%ifarch s390 s390x
+# Numactl is not available on s390[x] and ARM
+%ifarch s390 s390x %{arm}
 %define with_numactl 0
 %endif
 
@@ -204,7 +204,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 0.8.8
-Release: 5%{?dist}%{?extra_release}
+Release: 6%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -1020,6 +1020,9 @@ fi
 %endif
 
 %changelog
+* Wed Jul  5 2011 Peter Robinson <pbrobinson@gmail.com> - 0.8.8-6
+- Add ARM to NUMA excludes
+
 * Tue Jul  5 2011 Laine Stump <laine@redhat.com> 0.8.8-5
 - Fix for CVE-2011-2178, regression introduced in disk probe logic,
   Bug 709775
