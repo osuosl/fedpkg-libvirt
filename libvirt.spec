@@ -165,11 +165,24 @@
 %endif
 
 # Enable sanlock library for lock management with QEMU
-# temporary remove sanlock support in F16 as it seems too old
-# checking for sanlock_restrict in -lsanlock... no
-
-%if 0%{?fedora} > 16 || 0%{?rhel} >= 6
+%if 0%{?fedora} >= 16 || 0%{?rhel} >= 6
 %define with_sanlock  0%{!?_without_sanlock:%{server_drivers}}
+%endif
+
+# Disable some drivers when building without libvirt daemon.
+# The logic is the same as in configure.ac
+%if ! %{with_libvirtd}
+%define with_network 0
+%define with_qemu 0
+%define with_lxc 0
+%define with_uml 0
+%define with_hal 0
+%define with_udev 0
+%define with_storage_fs 0
+%define with_storage_lvm 0
+%define with_storage_iscsi 0
+%define with_storage_mpath 0
+%define with_storage_disk 0
 %endif
 
 # Enable libpcap library
@@ -216,17 +229,10 @@
 %define with_rhel5  0
 %endif
 
-
-# there's no use compiling the network driver without
-# the libvirt daemon
-%if ! %{with_libvirtd}
-%define with_network 0
-%endif
-
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 0.9.3
-Release: 3%{?dist}%{?extra_release}
+Version: 0.9.4
+Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -245,7 +251,7 @@ Requires: %{name}-client = %{version}-%{release}
 Requires: bridge-utils
 # for modprobe of pci devices
 Requires: module-init-tools
-# for /sbin/ip
+# for /sbin/ip & /sbin/tc
 Requires: iproute
 %endif
 %if %{with_network}
@@ -331,6 +337,7 @@ BuildRequires: libxslt
 BuildRequires: readline-devel
 BuildRequires: ncurses-devel
 BuildRequires: gettext
+BuildRequires: libtasn1-devel
 BuildRequires: gnutls-devel
 %if 0%{?fedora} >= 12 || 0%{?rhel} >= 6
 # for augparse, optionally used in testing
@@ -1039,10 +1046,13 @@ fi
 %if %{with_sanlock}
 %files lock-sanlock
 %defattr(-, root, root)
+%if %{with_qemu}
 %config(noreplace) %{_sysconfdir}/libvirt/qemu-sanlock.conf
+%endif
 %attr(0755, root, root) %{_libdir}/libvirt/lock-driver/sanlock.so
 %{_datadir}/augeas/lenses/libvirt_sanlock.aug
 %{_datadir}/augeas/lenses/tests/test_libvirt_sanlock.aug
+%dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/sanlock
 %{_sbindir}/virt-sanlock-cleanup
 %{_mandir}/man8/virt-sanlock-cleanup.8*
 %endif
@@ -1073,6 +1083,8 @@ fi
 %{_datadir}/libvirt/schemas/secret.rng
 %{_datadir}/libvirt/schemas/storageencryption.rng
 %{_datadir}/libvirt/schemas/nwfilter.rng
+%{_datadir}/libvirt/schemas/basictypes.rng
+%{_datadir}/libvirt/schemas/networkcommon.rng
 
 %{_datadir}/libvirt/cpu_map.xml
 
@@ -1121,6 +1133,18 @@ fi
 %endif
 
 %changelog
+* Wed Aug  3 2011 Daniel Veillard <veillard@redhat.com> - 0.9.4-1
+- network bandwidth QoS control
+- Add new API virDomainBlockPull*
+- save: new API to manipulate save file images
+- CPU bandwidth limits support
+- allow to send NMI and key event to guests
+- new API virDomainUndefineFlags
+- Implement code to attach to external QEMU instances
+- bios: Add support for SGA
+- various missing python binding
+- many improvements and bug fixes
+
 * Sat Jul 30 2011 Dan Hor?k <dan[at]danny.cz> - 0.9.3-3
 - xenlight available only on Xen arches
 
