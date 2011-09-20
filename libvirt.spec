@@ -50,6 +50,7 @@
 # Then the hypervisor drivers that talk a native remote protocol
 %define with_phyp          0%{!?_without_phyp:1}
 %define with_esx           0%{!?_without_esx:1}
+%define with_hyperv        0%{!?_without_hyperv:1}
 %define with_xenapi        0%{!?_without_xenapi:1}
 
 # Then the secondary host drivers
@@ -88,7 +89,6 @@
 # Xen is available only on i386 x86_64 ia64
 %ifnarch i386 i586 i686 x86_64 ia64
 %define with_xen 0
-%define with_libxl 0
 %endif
 
 # Numactl is not available on s390[x] and ARM
@@ -231,7 +231,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 0.9.4
+Version: 0.9.5
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -281,6 +281,10 @@ Requires: PolicyKit >= 0.6
 %endif
 %if %{with_storage_fs}
 Requires: nfs-utils
+# For mkfs
+Requires: util-linux-ng
+# For pool-build probing for existing pools
+BuildRequires: libblkid-devel >= 2.17
 # For glusterfs
 %if 0%{?fedora} >= 11
 Requires: glusterfs-client >= 2.0.1
@@ -354,7 +358,7 @@ BuildRequires: libpciaccess-devel >= 0.10.9
 BuildRequires: yajl-devel
 %endif
 %if %{with_sanlock}
-BuildRequires: sanlock-devel
+BuildRequires: sanlock-devel >= 1.8
 %endif
 %if %{with_libpcap}
 BuildRequires: libpcap-devel
@@ -452,6 +456,9 @@ BuildRequires: libcurl-devel
 BuildRequires: curl-devel
 %endif
 %endif
+%if %{with_hyperv}
+BuildRequires: libwsman-devel >= 2.2.3
+%endif
 %if %{with_audit}
 BuildRequires: audit-libs-devel
 %endif
@@ -515,7 +522,9 @@ the virtualization capabilities of recent versions of Linux (and other OSes).
 %package lock-sanlock
 Summary: Sanlock lock manager plugin for QEMU driver
 Group: Development/Libraries
-Requires: sanlock
+Requires: sanlock >= 1.8
+#for virt-sanlock-cleanup require augeas
+Requires: augeas
 Requires: %{name} = %{version}-%{release}
 
 %description lock-sanlock
@@ -582,6 +591,10 @@ of recent versions of Linux (and other OSes).
 
 %if ! %{with_esx}
 %define _without_esx --without-esx
+%endif
+
+%if ! %{with_hyperv}
+%define _without_hyperv --without-hyperv
 %endif
 
 %if ! %{with_vmware}
@@ -702,6 +715,7 @@ of recent versions of Linux (and other OSes).
            %{?_without_one} \
            %{?_without_phyp} \
            %{?_without_esx} \
+           %{?_without_hyperv} \
            %{?_without_vmware} \
            %{?_without_network} \
            %{?_with_rhel5_api} \
@@ -884,9 +898,13 @@ done
 %endif
 
 %if %{with_cgconfig}
+# Starting with Fedora 15, systemd automounts all cgroups, and cgconfig is
+# no longer a necessary service.
+%if 0%{?fedora} <= 14 || 0%{?rhel} <= 6
 if [ "$1" -eq "1" ]; then
 /sbin/chkconfig cgconfig on
 fi
+%endif
 %endif
 
 /sbin/chkconfig --add libvirtd
@@ -916,7 +934,8 @@ fi
 /sbin/chkconfig --add libvirt-guests
 if [ $1 -ge 1 ]; then
     level=$(/sbin/runlevel | /bin/cut -d ' ' -f 2)
-    if /sbin/chkconfig --list libvirt-guests | /bin/grep -q $level:on ; then
+    if /sbin/chkconfig --list libvirt-guests 2>/dev/null \
+        | /bin/grep -q $level:on ; then
         # this doesn't do anything but allowing for libvirt-guests to be
         # stopped on the first shutdown
         /sbin/service libvirt-guests start > /dev/null 2>&1 || true
@@ -1072,19 +1091,20 @@ fi
 %dir %{_datadir}/libvirt/
 %dir %{_datadir}/libvirt/schemas/
 
-%{_datadir}/libvirt/schemas/domain.rng
-%{_datadir}/libvirt/schemas/domainsnapshot.rng
-%{_datadir}/libvirt/schemas/network.rng
-%{_datadir}/libvirt/schemas/storagepool.rng
-%{_datadir}/libvirt/schemas/storagevol.rng
-%{_datadir}/libvirt/schemas/nodedev.rng
+%{_datadir}/libvirt/schemas/basictypes.rng
 %{_datadir}/libvirt/schemas/capability.rng
+%{_datadir}/libvirt/schemas/domain.rng
+%{_datadir}/libvirt/schemas/domaincommon.rng
+%{_datadir}/libvirt/schemas/domainsnapshot.rng
 %{_datadir}/libvirt/schemas/interface.rng
+%{_datadir}/libvirt/schemas/network.rng
+%{_datadir}/libvirt/schemas/networkcommon.rng
+%{_datadir}/libvirt/schemas/nodedev.rng
+%{_datadir}/libvirt/schemas/nwfilter.rng
 %{_datadir}/libvirt/schemas/secret.rng
 %{_datadir}/libvirt/schemas/storageencryption.rng
-%{_datadir}/libvirt/schemas/nwfilter.rng
-%{_datadir}/libvirt/schemas/basictypes.rng
-%{_datadir}/libvirt/schemas/networkcommon.rng
+%{_datadir}/libvirt/schemas/storagepool.rng
+%{_datadir}/libvirt/schemas/storagevol.rng
 
 %{_datadir}/libvirt/cpu_map.xml
 
@@ -1125,6 +1145,7 @@ fi
 
 %doc AUTHORS NEWS README COPYING.LIB
 %{_libdir}/python*/site-packages/libvirt.py*
+%{_libdir}/python*/site-packages/libvirt_qemu.py*
 %{_libdir}/python*/site-packages/libvirtmod*
 %doc python/tests/*.py
 %doc python/TODO
@@ -1133,6 +1154,15 @@ fi
 %endif
 
 %changelog
+* Tue Sep 20 2011 Daniel Veillard <veillard@redhat.com> - 0.9.5-1
+- many snapshot improvements (Eric Blake)
+- latency: Define new public API and structure (Osier Yang)
+- USB2 and various USB improvements (Marc-André Lureau)
+- storage: Add fs pool formatting (Osier Yang)
+- Add public API for getting migration speed (Jim Fehlig)
+- Add basic driver for Microsoft Hyper-V (Matthias Bolte)
+- many improvements and bug fixes
+
 * Wed Aug  3 2011 Daniel Veillard <veillard@redhat.com> - 0.9.4-1
 - network bandwidth QoS control
 - Add new API virDomainBlockPull*
