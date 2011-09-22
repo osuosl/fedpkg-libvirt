@@ -231,7 +231,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 0.9.5
+Version: 0.9.6
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -1154,6 +1154,9 @@ fi
 %endif
 
 %changelog
+* Thu Sep 22 2011 Daniel Veillard <veillard@redhat.com> - 0.9.6-1
+- Fix the qemu reboot bug and a few others bug fixes
+
 * Tue Sep 20 2011 Daniel Veillard <veillard@redhat.com> - 0.9.5-1
 - many snapshot improvements (Eric Blake)
 - latency: Define new public API and structure (Osier Yang)
