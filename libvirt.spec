@@ -97,7 +97,8 @@
 %endif
 
 # RHEL doesn't ship OpenVZ, VBox, UML, PowerHypervisor,
-# VMWare, libxenserver (xenapi), or libxenlight (Xen 4.1 and newer)
+# VMWare, libxenserver (xenapi), libxenlight (Xen 4.1 and newer),
+# or HyperV.
 %if 0%{?rhel}
 %define with_openvz 0
 %define with_vbox 0
@@ -106,6 +107,7 @@
 %define with_vmware 0
 %define with_xenapi 0
 %define with_libxl 0
+%define with_hyperv 0
 %endif
 
 # RHEL-5 has restricted QEMU to x86_64 only and is too old for LXC
@@ -232,10 +234,12 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 0.9.6
-Release: 1%{?dist}%{?extra_release}
+Release: 2%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
+Patch1: %{name}-%{version}-spec-F15-still-uses-cgconfig.patch
+Patch2: %{name}-%{version}-qemu-make-PCI-multifunction-support-more-manual.patch
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 
@@ -547,6 +551,8 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+%patch1 -p1
+%patch2 -p1
 
 %build
 %if ! %{with_xen}
@@ -900,7 +906,7 @@ done
 %if %{with_cgconfig}
 # Starting with Fedora 15, systemd automounts all cgroups, and cgconfig is
 # no longer a necessary service.
-%if 0%{?fedora} <= 14 || 0%{?rhel} <= 6
+%if 0%{?fedora} <= 15 || 0%{?rhel} <= 6
 if [ "$1" -eq "1" ]; then
 /sbin/chkconfig cgconfig on
 fi
@@ -1154,6 +1160,10 @@ fi
 %endif
 
 %changelog
+* Mon Oct  3 2011 Laine Stump <laine@redhat.com> - 0.9.6-2
+- Make PCI multifunction support more manual - Bug 742836
+- F15 build still uses cgconfig - Bug 738725
+
 * Thu Sep 22 2011 Daniel Veillard <veillard@redhat.com> - 0.9.6-1
 - Fix the qemu reboot bug and a few others bug fixes
 
