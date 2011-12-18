@@ -1,0 +1,734 @@
+From f514fb152ed5f2ff5bd372c07e47e56f8496a3db Mon Sep 17 00:00:00 2001
+From: "Daniel P. Berrange" <berrange@redhat.com>
+Date: Tue, 29 Nov 2011 12:11:01 +0000
+Subject: [PATCH 01/11] Add internal APIs for dealing with time
+
+(cherry pick (with small conflict resolution in src/Makefile.am, and
+removing the change to tests/.gitignore) from upstream 3ec1289 to
+address https://bugzilla.redhat.com/show_bug.cgi?id=757382)
+
+The logging APIs need to be able to generate formatted timestamps
+using only async signal safe functions. This rules out using
+gmtime/localtime/malloc/gettimeday(!) and much more.
+
+Introduce a new internal API which is async signal safe.
+
+  virTimeMillisNowRaw replacement for gettimeofday. Uses clock_gettime
+                      where available, otherwise falls back to the unsafe
+                      gettimeofday
+
+  virTimeFieldsNowRaw  replacements for gmtime(), convert a timestamp
+  virTimeFieldsThenRaw into a broken out set of fields. No localtime()
+                       replacement is provided, because converting to
+                       local time is not practical with only async signal
+                       safe APIs.
+
+  virTimeStringNowRaw  replacements for strftime() which print a timestamp
+  virTimeStringThenRaw into a string, using a pre-determined format, with
+                       a fixed size buffer (VIR_TIME_STRING_BUFLEN)
+
+For each of these there is also a version without the Raw postfix
+which raises a full libvirt error. These versions are not async
+signal safe
+
+* src/Makefile.am, src/util/virtime.c, src/util/virtime.h: New files
+* src/libvirt_private.syms: New APis
+* configure.ac: Check for clock_gettime in -lrt
+* tests/virtimetest.c, tests/Makefile.am: Test new APIs
+---
+ configure.ac             |   10 ++
+ po/POTFILES.in           |    1 +
+ src/Makefile.am          |    7 +-
+ src/libvirt_private.syms |   11 ++
+ src/util/virtime.c       |  350 ++++++++++++++++++++++++++++++++++++++++++++++
+ src/util/virtime.h       |   67 +++++++++
+ tests/Makefile.am        |    9 +-
+ tests/virtimetest.c      |  124 ++++++++++++++++
+ 8 files changed, 576 insertions(+), 3 deletions(-)
+ create mode 100644 src/util/virtime.c
+ create mode 100644 src/util/virtime.h
+ create mode 100644 tests/virtimetest.c
+
+diff --git a/configure.ac b/configure.ac
+index df19445..3d3cbbe 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -150,6 +150,16 @@ LIBS="$LIBS $LIB_PTHREAD"
+ AC_CHECK_FUNCS([pthread_mutexattr_init])
+ LIBS=$old_libs
+ 
++old_LIBS=$LIBS
++RT_LIBS=
++LIBS="$LIBS $LIB_PTHREAD -lrt"
++AC_CHECK_FUNC([clock_gettime],[
++     AC_DEFINE([HAVE_CLOCK_GETTIME],[],[Defined if clock_gettime() exists in librt.so])
++     RT_LIBS=-lrt
++])
++LIBS=$old_libs
++AC_SUBST(RT_LIBS)
++
+ dnl Availability of various common headers (non-fatal if missing).
+ AC_CHECK_HEADERS([pwd.h paths.h regex.h sys/un.h \
+   sys/poll.h syslog.h mntent.h net/ethernet.h linux/magic.h \
+diff --git a/po/POTFILES.in b/po/POTFILES.in
+index 5ce35ae..5913e82 100644
+--- a/po/POTFILES.in
++++ b/po/POTFILES.in
+@@ -128,6 +128,7 @@ src/util/viraudit.c
+ src/util/virfile.c
+ src/util/virpidfile.c
+ src/util/virterror.c
++src/util/virtime.c
+ src/util/xml.c
+ src/vbox/vbox_MSCOMGlue.c
+ src/vbox/vbox_XPCOMCGlue.c
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 738ee91..d3ebc73 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -88,7 +88,8 @@ UTIL_SOURCES =							\
+ 		util/xml.c util/xml.h				\
+ 		util/virterror.c util/virterror_internal.h	\
+ 		util/virkeycode.c util/virkeycode.h		\
+-		util/virkeymaps.h
++		util/virkeymaps.h				\
++		util/virtime.h util/virtime.c
+ 
+ EXTRA_DIST += $(srcdir)/util/virkeymaps.h $(srcdir)/util/keymaps.csv \
+ 		$(srcdir)/util/virkeycode-mapgen.py
+@@ -539,7 +540,8 @@ libvirt_util_la_SOURCES =					\
+ libvirt_util_la_CFLAGS = $(CAPNG_CFLAGS) $(YAJL_CFLAGS) $(LIBNL_CFLAGS) \
+ 		$(AM_CFLAGS) $(AUDIT_CFLAGS) $(DEVMAPPER_CFLAGS)
+ libvirt_util_la_LIBADD = $(CAPNG_LIBS) $(YAJL_LIBS) $(LIBNL_LIBS) \
+-		$(LIB_PTHREAD) $(AUDIT_LIBS) $(DEVMAPPER_LIBS)
++		$(LIB_PTHREAD) $(AUDIT_LIBS) $(DEVMAPPER_LIBS) \
++		$(RT_LIBS)
+ 
+ 
+ noinst_LTLIBRARIES += libvirt_conf.la
+@@ -1428,6 +1430,7 @@ libvirt_lxc_LDFLAGS = $(WARN_CFLAGS) $(AM_LDFLAGS)
+ libvirt_lxc_LDADD = $(CAPNG_LIBS) $(YAJL_LIBS) \
+ 		$(LIBXML_LIBS) $(NUMACTL_LIBS) $(LIB_PTHREAD) \
+ 		$(LIBNL_LIBS) $(AUDIT_LIBS) $(DEVMAPPER_LIBS) \
++		$(RT_LIBS) \
+ 		../gnulib/lib/libgnu.la
+ libvirt_lxc_CFLAGS =				\
+ 		$(LIBPARTED_CFLAGS)		\
+diff --git a/src/libvirt_private.syms b/src/libvirt_private.syms
+index da3042e..b07676f 100644
+--- a/src/libvirt_private.syms
++++ b/src/libvirt_private.syms
+@@ -1196,6 +1196,17 @@ virKeycodeSetTypeFromString;
+ virKeycodeValueFromString;
+ virKeycodeValueTranslate;
+ 
++
++# virtime.h
++virTimeMillisNow;
++virTimeFieldsNow;
++virTimeFieldsThen;
++virTimeStringNow;
++virTimeStringThen;
++virTimeStringNewNow;
++virTimeStringNewThen;
++
++
+ # xml.h
+ virXMLParseHelper;
+ virXMLPropString;
+diff --git a/src/util/virtime.c b/src/util/virtime.c
+new file mode 100644
+index 0000000..25c2317
+--- /dev/null
++++ b/src/util/virtime.c
+@@ -0,0 +1,350 @@
++/*
++ * virtime.c: Time handling functions
++ *
++ * Copyright (C) 2006-2011 Red Hat, Inc.
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
++ *
++ * Author: Daniel P. Berrange <berrange@redhat.com>
++ *
++ * The intent is that this file provides a set of time APIs which
++ * are async signal safe, to allow use in between fork/exec eg by
++ * the logging code.
++ *
++ * The reality is that wsnprintf is technically unsafe. We ought
++ * to roll out our int -> str conversions to avoid this.
++ *
++ * We do *not* use regular libvirt error APIs for most of the code,
++ * since those are not async signal safe, and we dont want logging
++ * APIs generating timestamps to blow away real errors
++ */
++
++#include <config.h>
++
++#include <stdio.h>
++#ifndef HAVE_CLOCK_GETTIME
++# include <sys/time.h>
++#endif
++
++#include "virtime.h"
++#include "util.h"
++#include "memory.h"
++#include "virterror_internal.h"
++
++#define VIR_FROM_THIS VIR_FROM_NONE
++
++/* We prefer clock_gettime if available because that is officially
++ * async signal safe according to POSIX. Many platforms lack it
++ * though, so fallback to gettimeofday everywhere else
++ */
++
++/**
++ * virTimeMillisNowRaw:
++ * @now: filled with current time in milliseconds
++ *
++ * Retrieves the current system time, in milliseconds since the
++ * epoch
++ *
++ * Returns 0 on success, -1 on error with errno set
++ */
++int virTimeMillisNowRaw(unsigned long long *now)
++{
++#ifdef HAVE_CLOCK_GETTIME
++    struct timespec ts;
++
++    if (clock_gettime(CLOCK_REALTIME, &ts) < 0)
++        return -1;
++
++    *now = (ts.tv_sec * 1000ull) + (ts.tv_nsec / (1000ull * 1000ull));
++#else
++    struct timeval tv;
++
++    if (gettimeofday(&tv, NULL) < 0)
++        return -1;
++
++    *now = (tv.tv_sec * 1000ull) + (tv.tv_usec / 1000ull);
++#endif
++
++    return 0;
++}
++
++
++/**
++ * virTimeFieldsNowRaw:
++ * @fields: filled with current time fields
++ *
++ * Retrieves the current time, in broken-down field format.
++ * The time is always in UTC.
++ *
++ * Returns 0 on success, -1 on error with errno set
++ */
++int virTimeFieldsNowRaw(struct tm *fields)
++{
++    unsigned long long now;
++
++    if (virTimeMillisNowRaw(&now) < 0)
++        return -1;
++
++    return virTimeFieldsThenRaw(now, fields);
++}
++
++
++#define SECS_PER_HOUR   (60 * 60)
++#define SECS_PER_DAY    (SECS_PER_HOUR * 24)
++#define DIV(a, b) ((a) / (b) - ((a) % (b) < 0))
++#define LEAPS_THRU_END_OF(y) (DIV (y, 4) - DIV (y, 100) + DIV (y, 400))
++
++const unsigned short int __mon_yday[2][13] = {
++    /* Normal years.  */
++    { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365 },
++    /* Leap years.  */
++    { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366 }
++};
++
++/**
++ * virTimeFieldsThenRaw:
++ * @when: the time to convert in milliseconds
++ * @fields: filled with time @when fields
++ *
++ * Converts the timestamp @when into broken-down field format.
++ * Time time is always in UTC
++ *
++ * Returns 0 on success, -1 on error with errno set
++ */
++int virTimeFieldsThenRaw(unsigned long long when, struct tm *fields)
++{
++    /* This code is taken from GLibC under terms of LGPLv2+ */
++    long int days, rem, y;
++    const unsigned short int *ip;
++    unsigned long long whenSecs = when / 1000ull;
++    unsigned int offset = 0; /* We hardcoded GMT */
++
++    days = whenSecs / SECS_PER_DAY;
++    rem = whenSecs % SECS_PER_DAY;
++    rem += offset;
++    while (rem < 0) {
++        rem += SECS_PER_DAY;
++        --days;
++    }
++    while (rem >= SECS_PER_DAY) {
++        rem -= SECS_PER_DAY;
++        ++days;
++    }
++    fields->tm_hour = rem / SECS_PER_HOUR;
++    rem %= SECS_PER_HOUR;
++    fields->tm_min = rem / 60;
++    fields->tm_sec = rem % 60;
++    /* January 1, 1970 was a Thursday.  */
++    fields->tm_wday = (4 + days) % 7;
++    if (fields->tm_wday < 0)
++        fields->tm_wday += 7;
++    y = 1970;
++
++    while (days < 0 || days >= (__isleap (y) ? 366 : 365)) {
++        /* Guess a corrected year, assuming 365 days per year.  */
++        long int yg = y + days / 365 - (days % 365 < 0);
++
++      /* Adjust DAYS and Y to match the guessed year.  */
++      days -= ((yg - y) * 365
++               + LEAPS_THRU_END_OF (yg - 1)
++               - LEAPS_THRU_END_OF (y - 1));
++      y = yg;
++    }
++    fields->tm_year = y - 1900;
++
++    fields->tm_yday = days;
++    ip = __mon_yday[__isleap(y)];
++    for (y = 11; days < (long int) ip[y]; --y)
++        continue;
++    days -= ip[y];
++    fields->tm_mon = y;
++    fields->tm_mday = days + 1;
++    return 0;
++}
++
++
++/**
++ * virTimeStringNowRaw:
++ * @buf: a buffer at least VIR_TIME_STRING_BUFLEN in length
++ *
++ * Initializes @buf to contain a formatted timestamp
++ * corresponding to the current time.
++ *
++ * Returns 0 on success, -1 on error
++ */
++int virTimeStringNowRaw(char *buf)
++{
++    unsigned long long now;
++
++    if (virTimeMillisNowRaw(&now) < 0)
++        return -1;
++
++    return virTimeStringThenRaw(now, buf);
++}
++
++
++/**
++ * virTimeStringThenRaw:
++ * @when: the time to format in milliseconds
++ * @buf: a buffer at least VIR_TIME_STRING_BUFLEN in length
++ *
++ * Initializes @buf to contain a formatted timestamp
++ * corresponding to the time @when.
++ *
++ * Returns 0 on success, -1 on error
++ */
++int virTimeStringThenRaw(unsigned long long when, char *buf)
++{
++    struct tm fields;
++
++    if (virTimeFieldsThenRaw(when, &fields) < 0)
++        return -1;
++
++    fields.tm_year += 1900;
++    fields.tm_mon += 1;
++
++    if (snprintf(buf, VIR_TIME_STRING_BUFLEN,
++                 "%4d-%02d-%02d %02d:%02d:%02d.%03d+0000",
++                 fields.tm_year, fields.tm_mon, fields.tm_mday,
++                 fields.tm_hour, fields.tm_min, fields.tm_sec,
++                 (int) (when % 1000)) >= VIR_TIME_STRING_BUFLEN) {
++        errno = ERANGE;
++        return -1;
++    }
++
++    return 0;
++}
++
++
++/**
++ * virTimeMillisNow:
++ * @now: filled with current time in milliseconds
++ *
++ * Retrieves the current system time, in milliseconds since the
++ * epoch
++ *
++ * Returns 0 on success, -1 on error with error reported
++ */
++int virTimeMillisNow(unsigned long long *now)
++{
++    if (virTimeMillisNowRaw(now) < 0) {
++        virReportSystemError(errno, "%s",
++                             _("Unable to get current time"));
++        return -1;
++    }
++    return 0;
++}
++
++
++/**
++ * virTimeFieldsNowRaw:
++ * @fields: filled with current time fields
++ *
++ * Retrieves the current time, in broken-down field format.
++ * The time is always in UTC.
++ *
++ * Returns 0 on success, -1 on error with errno reported
++ */
++int virTimeFieldsNow(struct tm *fields)
++{
++    unsigned long long now;
++
++    if (virTimeMillisNow(&now) < 0)
++        return -1;
++
++    return virTimeFieldsThen(now, fields);
++}
++
++
++/**
++ * virTimeFieldsThen:
++ * @when: the time to convert in milliseconds
++ * @fields: filled with time @when fields
++ *
++ * Converts the timestamp @when into broken-down field format.
++ * Time time is always in UTC
++ *
++ * Returns 0 on success, -1 on error with error reported
++ */
++int virTimeFieldsThen(unsigned long long when, struct tm *fields)
++{
++    if (virTimeFieldsThenRaw(when, fields) < 0) {
++        virReportSystemError(errno, "%s",
++                             _("Unable to break out time format"));
++        return -1;
++    }
++    return 0;
++}
++
++
++/**
++ * virTimeStringNow:
++ *
++ * Creates a string containing a formatted timestamp
++ * corresponding to the current time.
++ *
++ * This function is not async signal safe
++ *
++ * Returns a formatted allocated string, or NULL on error
++ */
++char *virTimeStringNow(void)
++{
++    char *ret;
++
++    if (VIR_ALLOC_N(ret, VIR_TIME_STRING_BUFLEN) < 0) {
++        virReportOOMError();
++        return NULL;
++    }
++
++    if (virTimeStringNowRaw(ret) < 0) {
++        virReportSystemError(errno, "%s",
++                             _("Unable to format time"));
++        VIR_FREE(ret);
++        return NULL;
++    }
++
++    return ret;
++}
++
++
++/**
++ * virTimeStringThen:
++ * @when: the time to format in milliseconds
++ *
++ * Creates a string containing a formatted timestamp
++ * corresponding to the time @when.
++ *
++ * This function is not async signal safe
++ *
++ * Returns a formatted allocated string, or NULL on error
++ */
++char *virTimeStringThen(unsigned long long when)
++{
++    char *ret;
++
++    if (VIR_ALLOC_N(ret, VIR_TIME_STRING_BUFLEN) < 0) {
++        virReportOOMError();
++        return NULL;
++    }
++
++    if (virTimeStringThenRaw(when, ret) < 0) {
++        virReportSystemError(errno, "%s",
++                             _("Unable to format time"));
++        VIR_FREE(ret);
++        return NULL;
++    }
++
++    return ret;
++}
+diff --git a/src/util/virtime.h b/src/util/virtime.h
+new file mode 100644
+index 0000000..59954c2
+--- /dev/null
++++ b/src/util/virtime.h
+@@ -0,0 +1,67 @@
++/*
++ * virtime.h: Time handling functions
++ *
++ * Copyright (C) 2006-2011 Red Hat, Inc.
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
++ *
++ * Author: Daniel P. Berrange <berrange@redhat.com>
++ */
++
++#ifndef __VIR_TIME_H__
++# define __VIR_TIME_H__
++
++# include <time.h>
++
++# include "internal.h"
++
++/* The format string we intend to use is:
++ *
++ * Yr  Mon  Day  Hour  Min  Sec Ms   TZ
++ * %4d-%02d-%02d %02d:%02d:%02d.%03d+0000
++ *
++ */
++# define VIR_TIME_STRING_BUFLEN \
++    (4 + 1 + 2 + 1 + 2 + 1 + 2 + 1 + 2 + 1 + 2 + 1 + 3 + 5 + 1)
++/*   Yr      Mon     Day     Hour    Min     Sec     Ms  TZ  NULL */
++
++/* These APIs are async signal safe and return -1, setting
++ * errno on failure */
++int virTimeMillisNowRaw(unsigned long long *now)
++    ATTRIBUTE_NONNULL(1) ATTRIBUTE_RETURN_CHECK;
++int virTimeFieldsNowRaw(struct tm *fields)
++    ATTRIBUTE_NONNULL(1) ATTRIBUTE_RETURN_CHECK;
++int virTimeFieldsThenRaw(unsigned long long when, struct tm *fields)
++    ATTRIBUTE_NONNULL(2) ATTRIBUTE_RETURN_CHECK;
++int virTimeStringNowRaw(char *buf)
++    ATTRIBUTE_NONNULL(1) ATTRIBUTE_RETURN_CHECK;
++int virTimeStringThenRaw(unsigned long long when, char *buf)
++    ATTRIBUTE_NONNULL(2) ATTRIBUTE_RETURN_CHECK;
++
++
++/* These APIs are *not* async signal safe and return -1,
++ * raising a libvirt error on failure
++ */
++int virTimeMillisNow(unsigned long long *now)
++    ATTRIBUTE_NONNULL(1) ATTRIBUTE_RETURN_CHECK;
++int virTimeFieldsNow(struct tm *fields)
++    ATTRIBUTE_NONNULL(1) ATTRIBUTE_RETURN_CHECK;
++int virTimeFieldsThen(unsigned long long when, struct tm *fields)
++    ATTRIBUTE_NONNULL(2) ATTRIBUTE_RETURN_CHECK;
++char *virTimeStringNow(void);
++char *virTimeStringThen(unsigned long long when);
++
++
++#endif
+diff --git a/tests/Makefile.am b/tests/Makefile.am
+index cbbbc6f..fba5e53 100644
+--- a/tests/Makefile.am
++++ b/tests/Makefile.am
+@@ -89,7 +89,8 @@ check_PROGRAMS = virshtest conftest sockettest \
+ 	nodeinfotest qparamtest virbuftest \
+ 	commandtest commandhelper seclabeltest \
+ 	hashtest virnetmessagetest virnetsockettest ssh \
+-	utiltest virnettlscontexttest shunloadtest
++	utiltest virnettlscontexttest shunloadtest \
++	virtimetest
+ 
+ check_LTLIBRARIES = libshunload.la
+ 
+@@ -209,6 +210,7 @@ TESTS = virshtest \
+ 	virnetmessagetest \
+ 	virnetsockettest \
+ 	virnettlscontexttest \
++	virtimetest \
+ 	shunloadtest \
+ 	utiltest \
+ 	$(test_scripts)
+@@ -475,6 +477,11 @@ else
+ EXTRA_DIST += pkix_asn1_tab.c
+ endif
+ 
++virtimetest_SOURCES = \
++	virtimetest.c testutils.h testutils.c
++virtimetest_CFLAGS = -Dabs_builddir="\"$(abs_builddir)\"" $(AM_CFLAGS)
++virtimetest_LDADD = ../src/libvirt-net-rpc.la $(LDADDS)
++
+ 
+ seclabeltest_SOURCES = \
+ 	seclabeltest.c
+diff --git a/tests/virtimetest.c b/tests/virtimetest.c
+new file mode 100644
+index 0000000..5d56dd3
+--- /dev/null
++++ b/tests/virtimetest.c
+@@ -0,0 +1,124 @@
++/*
++ * Copyright (C) 2011 Red Hat, Inc.
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA
++ *
++ * Author: Daniel P. Berrange <berrange@redhat.com>
++ */
++
++#include <config.h>
++
++#include <stdlib.h>
++#include <signal.h>
++
++#include "testutils.h"
++#include "util.h"
++#include "virterror_internal.h"
++#include "memory.h"
++#include "logging.h"
++
++#include "virtime.h"
++
++#define VIR_FROM_THIS VIR_FROM_RPC
++
++struct testTimeFieldsData {
++    unsigned long long when;
++    struct tm fields;
++};
++
++static int testTimeFields(const void *args)
++{
++    const struct testTimeFieldsData *data = args;
++    struct tm actual;
++
++    if (virTimeFieldsThen(data->when, &actual) < 0)
++        return -1;
++
++#define COMPARE(field)                                          \
++    do {                                                        \
++        if (data->fields.field != actual.field) {               \
++            VIR_DEBUG("Expect " #field " %d got %d",            \
++                      data->fields.field, actual.field);        \
++            return -1;                                          \
++        }                                                       \
++    } while (0)
++
++    /* tm_year value 0 is based off epoch 1900 */
++    actual.tm_year += 1900;
++    /* tm_mon is range 0-11, but we want 1-12 */
++    actual.tm_mon += 1;
++
++    COMPARE(tm_year);
++    COMPARE(tm_mon);
++    COMPARE(tm_mday);
++    COMPARE(tm_hour);
++    COMPARE(tm_min);
++    COMPARE(tm_sec);
++
++    return 0;
++}
++
++
++static int
++mymain(void)
++{
++    int ret = 0;
++
++    signal(SIGPIPE, SIG_IGN);
++
++#define TEST_FIELDS(ts, year, mon, day, hour, min, sec)            \
++    do {                                                             \
++        struct testTimeFieldsData data = {                           \
++            .when = ts,                                              \
++            .fields = {                                              \
++                .tm_year = year,                                     \
++                .tm_mon = mon,                                       \
++                .tm_mday = day,                                      \
++                .tm_hour = hour,                                     \
++                .tm_min = min,                                       \
++                .tm_sec = sec,                                       \
++                .tm_wday = 0,                                        \
++                .tm_yday = 0,                                        \
++                .tm_isdst = 0,                                       \
++            },                                                       \
++        };                                                           \
++        if (virtTestRun("Test fields " #ts " " #year " ", 1, testTimeFields, &data) < 0) \
++            ret = -1;                                                \
++    } while (0)
++
++    TEST_FIELDS(            0ull, 1970,  1,  1,  0,  0,  0);
++    TEST_FIELDS(         5000ull, 1970,  1,  1,  0,  0,  5);
++    TEST_FIELDS(      3605000ull, 1970,  1,  1,  1,  0,  5);
++    TEST_FIELDS(     86405000ull, 1970,  1,  2,  0,  0,  5);
++    TEST_FIELDS(  31536000000ull, 1971,  1,  1,  0,  0,  0);
++
++    TEST_FIELDS(  30866399000ull, 1970, 12, 24,  5, 59, 59);
++    TEST_FIELDS( 123465599000ull, 1973, 11, 29, 23, 59, 59);
++    TEST_FIELDS( 155001599000ull, 1974, 11, 29, 23, 59, 59);
++
++    TEST_FIELDS( 186537599000ull, 1975, 11, 29, 23, 59, 59);
++    TEST_FIELDS( 344390399000ull, 1980, 11, 29, 23, 59, 59);
++    TEST_FIELDS(1203161493000ull, 2008,  2, 16, 11, 31, 33);
++    TEST_FIELDS(1234567890000ull, 2009,  2, 13, 23, 31, 30);
++
++    TEST_FIELDS(1322524800000ull, 2011, 11, 29,  0,  0,  0);
++    TEST_FIELDS(1322611199000ull, 2011, 11, 29, 23, 59, 59);
++
++    TEST_FIELDS(2147483648000ull, 2038,  1, 19,  3, 14,  8);
++
++    return (ret==0 ? EXIT_SUCCESS : EXIT_FAILURE);
++}
++
++VIRT_TEST_MAIN(mymain)
+-- 
+1.7.7.3
+

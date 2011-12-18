@@ -1,0 +1,44 @@
+From 73469d2989ad7cd4ed0802ea75d5b111af44eeb1 Mon Sep 17 00:00:00 2001
+From: "Daniel P. Berrange" <berrange@redhat.com>
+Date: Mon, 5 Dec 2011 14:04:25 +0000
+Subject: [PATCH 07/13] Fix incorrect symbols for virtime.h module breaking
+ Mingw32
+
+(prerequisite patch, direct cherry-pick of upstream b265bed, to
+resolve: https://bugzilla.redhat.com/show_bug.cgi?id=757382)
+
+The Mingw32 linker highlighted that the symbols for virtime.h
+declared in libvirt_private.syms were incorrect
+
+* src/libvirt_private.syms: Fix virtime.h symbols
+---
+ src/libvirt_private.syms |    9 ++++++---
+ 1 files changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/src/libvirt_private.syms b/src/libvirt_private.syms
+index b804b34..e4ade24 100644
+--- a/src/libvirt_private.syms
++++ b/src/libvirt_private.syms
+@@ -1196,13 +1196,16 @@ virKeycodeValueTranslate;
+ 
+ 
+ # virtime.h
+-virTimeMillisNow;
+ virTimeFieldsNow;
++virTimeFieldsNowRaw;
+ virTimeFieldsThen;
++virTimeFieldsThenRaw;
++virTimeMillisNow;
++virTimeMillisNowRaw;
+ virTimeStringNow;
++virTimeStringNowRaw;
+ virTimeStringThen;
+-virTimeStringNewNow;
+-virTimeStringNewThen;
++virTimeStringThenRaw;
+ 
+ 
+ # xml.h
+-- 
+1.7.7.3
+

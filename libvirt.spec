@@ -136,7 +136,7 @@
 %endif
 
 # Fedora doesn't have new enough Xen for libxl until F16
-%if 0%{?fedora} < 16
+%if 0%{?fedora} && 0%{?fedora} < 16
 %define with_libxl 0
 %endif
 
@@ -235,12 +235,26 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 0.9.6
-Release: 3%{?dist}%{?extra_release}
+Release: 4%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
 Patch1: %{name}-%{version}-spec-F15-still-uses-cgconfig.patch
 Patch2: %{name}-%{version}-qemu-make-PCI-multifunction-support-more-manual.patch
+Patch3:%{name}-%{version}-logging-Do-not-log-timestamp-through-syslog.patch
+Patch4:%{name}-%{version}-logging-Add-date-to-log-timestamp.patch
+Patch5:%{name}-%{version}-Add-internal-APIs-for-dealing-with-time.patch
+Patch6:%{name}-%{version}-Make-logging-async-signal-safe-wrt-time-stamp-genera.patch
+Patch7:%{name}-%{version}-Remove-time-APIs-from-src-util-util.h.patch
+Patch8:%{name}-%{version}-spec-mark-directories-in-var-run-as-ghosts.patch
+Patch9:%{name}-%{version}-Fix-incorrect-symbols-for-virtime.h-module-breaking-.patch
+Patch10:%{name}-%{version}-spec-add-dmidecode-as-prereq.patch
+Patch11:%{name}-%{version}-spec-don-t-use-chkconfig-list.patch
+Patch12:%{name}-%{version}-spec-fix-logic-bug-in-deciding-to-turn-on-cgconfig.patch
+Patch13:%{name}-%{version}-network-don-t-add-iptables-rules-for-externally-mana.patch
+Patch14:%{name}-%{version}-test-replace-deprecated-fedora-13-machine.patch
+Patch15:%{name}-%{version}-qemu-replace-deprecated-fedora-13-machine.patch
+
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
 
@@ -329,6 +343,8 @@ Requires: device-mapper
 %if %{with_cgconfig}
 Requires: libcgroup
 %endif
+# For virConnectGetSysinfo
+Requires: dmidecode
 
 # All build-time requirements
 BuildRequires: python-devel
@@ -554,6 +570,19 @@ of recent versions of Linux (and other OSes).
 %setup -q
 %patch1 -p1
 %patch2 -p1
+%patch3 -p1
+%patch4 -p1
+%patch5 -p1
+%patch6 -p1
+%patch7 -p1
+%patch8 -p1
+%patch9 -p1
+%patch10 -p1
+%patch11 -p1
+%patch12 -p1
+%patch13 -p1
+%patch14 -p1
+%patch15 -p1
 
 %build
 %if ! %{with_xen}
@@ -853,8 +882,7 @@ getent passwd qemu >/dev/null || \
 # We want to install the default network for initial RPM installs
 # or on the first upgrade from a non-network aware libvirt only.
 # We check this by looking to see if the daemon is already installed
-/sbin/chkconfig --list libvirtd 1>/dev/null 2>&1
-if test $? != 0 && test ! -f %{_sysconfdir}/libvirt/qemu/networks/default.xml
+if ! /sbin/chkconfig libvirtd && test ! -f %{_sysconfdir}/libvirt/qemu/networks/default.xml
 then
     UUID=`/usr/bin/uuidgen`
     sed -e "s,</name>,</name>\n  <uuid>$UUID</uuid>," \
@@ -905,9 +933,9 @@ done
 %endif
 
 %if %{with_cgconfig}
-# Starting with Fedora 15, systemd automounts all cgroups, and cgconfig is
+# Starting with Fedora 16, systemd automounts all cgroups, and cgconfig is
 # no longer a necessary service.
-%if 0%{?fedora} <= 15 || 0%{?rhel} <= 6
+%if 0%{?rhel} || (0%{?fedora} && 0%{?fedora} < 16)
 if [ "$1" -eq "1" ]; then
 /sbin/chkconfig cgconfig on
 fi
@@ -941,8 +969,7 @@ fi
 /sbin/chkconfig --add libvirt-guests
 if [ $1 -ge 1 ]; then
     level=$(/sbin/runlevel | /bin/cut -d ' ' -f 2)
-    if /sbin/chkconfig --list libvirt-guests 2>/dev/null \
-        | /bin/grep -q $level:on ; then
+    if /sbin/chkconfig --levels $level libvirt-guests; then
         # this doesn't do anything but allowing for libvirt-guests to be
         # stopped on the first shutdown
         /sbin/service libvirt-guests start > /dev/null 2>&1 || true
@@ -1001,31 +1028,31 @@ fi
 %{_datadir}/libvirt/networks/default.xml
 %endif
 
-%dir %{_localstatedir}/run/libvirt/
+%ghost %dir %{_localstatedir}/run/libvirt/
 
 %dir %attr(0711, root, root) %{_localstatedir}/lib/libvirt/images/
 %dir %attr(0711, root, root) %{_localstatedir}/lib/libvirt/boot/
 %dir %attr(0711, root, root) %{_localstatedir}/cache/libvirt/
 
 %if %{with_qemu}
-%dir %attr(0700, root, root) %{_localstatedir}/run/libvirt/qemu/
+%ghost %dir %attr(0700, root, root) %{_localstatedir}/run/libvirt/qemu/
 %dir %attr(0750, %{qemu_user}, %{qemu_group}) %{_localstatedir}/lib/libvirt/qemu/
 %dir %attr(0750, %{qemu_user}, %{qemu_group}) %{_localstatedir}/cache/libvirt/qemu/
 %endif
 %if %{with_lxc}
-%dir %{_localstatedir}/run/libvirt/lxc/
+%ghost %dir %{_localstatedir}/run/libvirt/lxc/
 %dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/lxc/
 %endif
 %if %{with_uml}
-%dir %{_localstatedir}/run/libvirt/uml/
+%ghost %dir %{_localstatedir}/run/libvirt/uml/
 %dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/uml/
 %endif
 %if %{with_libxl}
-%dir %{_localstatedir}/run/libvirt/libxl/
+%ghost %dir %{_localstatedir}/run/libvirt/libxl/
 %dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/libxl/
 %endif
 %if %{with_network}
-%dir %{_localstatedir}/run/libvirt/network/
+%ghost %dir %{_localstatedir}/run/libvirt/network/
 %dir %attr(0700, root, root) %{_localstatedir}/lib/libvirt/network/
 %dir %attr(0755, root, root) %{_localstatedir}/lib/libvirt/dnsmasq/
 %endif
@@ -1161,6 +1188,19 @@ fi
 %endif
 
 %changelog
+* Sun Dec 18 2011 Laine Stump <laine@redhat.com> - 0.9.6-4
+- replace "fedora-13" machine type with "pc-0.14" to prepare
+  systems for removal of "fedora-13" from qemu - Bug 754772
+- don't add iptables rules for externally managed networks
+  - Buf 765964 / CVE-2011-4600
+- specfile changes
+  - Bug 761329 don't use chkconfig --list
+  - Bug 758896 mark directories in /var/run as ghosts
+  - Bug 738725 fix logic bug in deciding to turn on cgconfig
+  - Bug 754909 add dmidecode as a prerequisite
+- new async-safe time API + make logging async signal sage wrt.
+  time stamp generation - Bug 757382
+
 * Tue Oct 11 2011 Dan Horák <dan[at]danny.cz> - 0.9.6-3
 - xenlight available only on Xen arches (#745020)
 
