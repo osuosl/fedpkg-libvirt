@@ -8,6 +8,14 @@
   sed -ne 's/^\.fc\?\([0-9]\+\).*/%%define fedora \1/p')}
 %endif
 
+# Default to skipping autoreconf.  Distros can change just this one line
+# (or provide a command-line override) if they backport any patches that
+# touch configure.ac or Makefile.am.
+# (Fedora 16 has to turn this on because changes have been made to
+# configure.ac and Makefile.am for the addition of the virtime internal
+# api)
+%{!?enable_autotools:%define enable_autotools 1}
+
 # A client only build will create a libvirt.so only containing
 # the generic RPC driver, and test driver and no libvirtd
 # Default to a full server + client build
@@ -254,6 +262,8 @@ Patch12:%{name}-%{version}-spec-fix-logic-bug-in-deciding-to-turn-on-cgconfig.pa
 Patch13:%{name}-%{version}-network-don-t-add-iptables-rules-for-externally-mana.patch
 Patch14:%{name}-%{version}-test-replace-deprecated-fedora-13-machine.patch
 Patch15:%{name}-%{version}-qemu-replace-deprecated-fedora-13-machine.patch
+Patch16:%{name}-%{version}-spec-make-it-easier-to-autoreconf-when-building-rpm.patch 
+Patch17:%{name}-%{version}-Avoid-crash-in-shunloadtest.patch 
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
@@ -347,6 +357,12 @@ Requires: libcgroup
 Requires: dmidecode
 
 # All build-time requirements
+%if 0%{?enable_autotools}
+BuildRequires: autoconf
+BuildRequires: automake
+BuildRequires: gettext-devel
+BuildRequires: libtool
+%endif
 BuildRequires: python-devel
 
 %if %{with_xen}
@@ -583,6 +599,8 @@ of recent versions of Linux (and other OSes).
 %patch13 -p1
 %patch14 -p1
 %patch15 -p1
+%patch16 -p1
+%patch17 -p1
 
 %build
 %if ! %{with_xen}
@@ -736,6 +754,9 @@ of recent versions of Linux (and other OSes).
 %define with_packager_version --with-packager-version="%{release}"
 
 
+%if 0%{?enable_autotools}
+autoreconf -if
+%endif
 %configure %{?_without_xen} \
            %{?_without_qemu} \
            %{?_without_openvz} \
@@ -1188,7 +1209,7 @@ fi
 %endif
 
 %changelog
-* Sun Dec 18 2011 Laine Stump <laine@redhat.com> - 0.9.6-4
+* Mon Dec 19 2011 Laine Stump <laine@redhat.com> - 0.9.6-4
 - replace "fedora-13" machine type with "pc-0.14" to prepare
   systems for removal of "fedora-13" from qemu - Bug 754772
 - don't add iptables rules for externally managed networks
@@ -1199,7 +1220,8 @@ fi
   - Bug 738725 fix logic bug in deciding to turn on cgconfig
   - Bug 754909 add dmidecode as a prerequisite
 - new async-safe time API + make logging async signal sage wrt.
-  time stamp generation - Bug 757382
+  time stamp generation - Bug 757382 (this required
+  enabling autoconf during the build)
 
 * Tue Oct 11 2011 Dan Horák <dan[at]danny.cz> - 0.9.6-3
 - xenlight available only on Xen arches (#745020)
