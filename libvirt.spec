@@ -243,7 +243,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 0.9.6
-Release: 4%{?dist}%{?extra_release}
+Release: 5%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -264,6 +264,16 @@ Patch14:%{name}-%{version}-test-replace-deprecated-fedora-13-machine.patch
 Patch15:%{name}-%{version}-qemu-replace-deprecated-fedora-13-machine.patch
 Patch16:%{name}-%{version}-spec-make-it-easier-to-autoreconf-when-building-rpm.patch 
 Patch17:%{name}-%{version}-Avoid-crash-in-shunloadtest.patch 
+# Fix crash when migrating many guests with vdsm (bz 785789)
+Patch18: %{name}-large-migrate-crash.patch
+# Fix libvirtd hang in vmware guest (bz 796451)
+Patch19: %{name}-dmidecode-hang.patch
+# Don't start HAL in init script (bz 789234)
+Patch20: %{name}-no-init-hal-start.patch
+# Fix storage lookup errors with empty lvm pool (bz 782261)
+Patch21: %{name}-empty-lvm-hang.patch
+# Fix test failures with new gnutls
+Patch22: %{name}-gnutls-test-failures.patch
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
@@ -601,6 +611,11 @@ of recent versions of Linux (and other OSes).
 %patch15 -p1
 %patch16 -p1
 %patch17 -p1
+%patch18 -p1
+%patch19 -p1
+%patch20 -p1
+%patch21 -p1
+%patch22 -p1
 
 %build
 %if ! %{with_xen}
@@ -1209,6 +1224,13 @@ fi
 %endif
 
 %changelog
+* Sun Mar 04 2012 Cole Robinson <crobinso@redhat.com> - 0.9.6-5
+- Fix crash when migrating many guests with vdsm (bz 785789)
+- Fix libvirtd hang in vmware guest (bz 796451)
+- Don't start HAL in init script (bz 789234)
+- Fix storage lookup errors with empty lvm pool (bz 782261)
+- Fix test failures with new gnutls
+
 * Mon Dec 19 2011 Laine Stump <laine@redhat.com> - 0.9.6-4
 - replace "fedora-13" machine type with "pc-0.14" to prepare
   systems for removal of "fedora-13" from qemu - Bug 754772

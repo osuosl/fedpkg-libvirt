@@ -1,0 +1,21 @@
+commit 2dcca3ec0a28c6562ebfbe7a5eae4729fb5de904
+Author: Peter Krempa <pkrempa@redhat.com>
+Date:   Fri Mar 2 15:12:32 2012 +0100
+
+    daemon: Remove deprecated HAL from init script dependencies
+    
+    The init script for the daemon requests to start HAL although it has
+    been deprecated long time ago. This patch removes the dependency.
+
+diff --git a/daemon/libvirtd.init.in b/daemon/libvirtd.init.in
+index 3c49b1f..f66ddad 100644
+--- a/daemon/libvirtd.init.in
++++ b/daemon/libvirtd.init.in
+@@ -8,7 +8,6 @@
+ # Required-Start: $network messagebus
+ # Should-Start: $named
+ # Should-Start: xend
+-# Should-Start: hal
+ # Should-Start: avahi-daemon
+ # Required-Stop: $network messagebus
+ # Should-Stop: $named
