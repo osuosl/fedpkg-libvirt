@@ -1,0 +1,40 @@
+From b221be79d0682b12249cb4b408e1b649cb2bc974 Mon Sep 17 00:00:00 2001
+From: Laine Stump <laine@laine.org>
+Date: Mon, 12 Mar 2012 14:03:38 -0400
+Subject: [PATCH] specfile: fix typo in chkconfig commandline
+
+This addresses https://bugzilla.redhat.com/show_bug.cgi?id=786890 in
+the simplest manner possible.
+
+The problem is that the chkconfig command is being called with
+"--levels", but the option name is actually "--level".
+
+Upstream libvirt has completely removed the offending code, but the
+patch that does that is more invasive than this patch, which simply
+corrects the misspelling.
+
+Note that this change really needs to be in the Fedora-git
+libvirt.spec file, *not* the specfile in the source RPM. This patch to
+the src.rpm copy is included purely to prevent potential regression in
+the event someone regenerates Fedora's libvirt.spec from sources.
+---
+ libvirt.spec.in |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/libvirt.spec.in b/libvirt.spec.in
+index 8579ba8..4b311b7 100644
+--- a/libvirt.spec.in
++++ b/libvirt.spec.in
+@@ -947,7 +947,7 @@ fi
+ /sbin/chkconfig --add libvirt-guests
+ if [ $1 -ge 1 ]; then
+     level=$(/sbin/runlevel | /bin/cut -d ' ' -f 2)
+-    if /sbin/chkconfig --levels $level libvirt-guests; then
++    if /sbin/chkconfig --level $level libvirt-guests; then
+         # this doesn't do anything but allowing for libvirt-guests to be
+         # stopped on the first shutdown
+         /sbin/service libvirt-guests start > /dev/null 2>&1 || true
+-- 
+1.7.7.6
+
+

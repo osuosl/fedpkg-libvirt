@@ -243,7 +243,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 0.9.6
-Release: 5%{?dist}%{?extra_release}
+Release: 6%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
@@ -274,6 +274,8 @@ Patch20: %{name}-no-init-hal-start.patch
 Patch21: %{name}-empty-lvm-hang.patch
 # Fix test failures with new gnutls
 Patch22: %{name}-gnutls-test-failures.patch
+# Fix typo in chkconfig commandline for specfile
+Patch23: %{name}-%{version}-specfile-fix-typo-in-chkconfig-commandline.patch
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
@@ -616,6 +618,7 @@ of recent versions of Linux (and other OSes).
 %patch20 -p1
 %patch21 -p1
 %patch22 -p1
+%patch23 -p1
 
 %build
 %if ! %{with_xen}
@@ -1005,7 +1008,7 @@ fi
 /sbin/chkconfig --add libvirt-guests
 if [ $1 -ge 1 ]; then
     level=$(/sbin/runlevel | /bin/cut -d ' ' -f 2)
-    if /sbin/chkconfig --levels $level libvirt-guests; then
+    if /sbin/chkconfig --level $level libvirt-guests; then
         # this doesn't do anything but allowing for libvirt-guests to be
         # stopped on the first shutdown
         /sbin/service libvirt-guests start > /dev/null 2>&1 || true
@@ -1224,6 +1227,9 @@ fi
 %endif
 
 %changelog
+* Fri Mar 30 2012 Osier Yang <jyang@redhat.com> - 0.9.6-6
+- fix typo in chkconfig commandline for specfile - Bug 786890
+
 * Sun Mar 04 2012 Cole Robinson <crobinso@redhat.com> - 0.9.6-5
 - Fix crash when migrating many guests with vdsm (bz 785789)
 - Fix libvirtd hang in vmware guest (bz 796451)
