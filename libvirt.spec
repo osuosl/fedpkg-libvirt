@@ -242,40 +242,27 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 0.9.6
-Release: 6%{?dist}%{?extra_release}
+Version: 0.9.6.1
+Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
-Source: http://libvirt.org/sources/libvirt-%{version}.tar.gz
-Patch1: %{name}-%{version}-spec-F15-still-uses-cgconfig.patch
-Patch2: %{name}-%{version}-qemu-make-PCI-multifunction-support-more-manual.patch
-Patch3:%{name}-%{version}-logging-Do-not-log-timestamp-through-syslog.patch
-Patch4:%{name}-%{version}-logging-Add-date-to-log-timestamp.patch
-Patch5:%{name}-%{version}-Add-internal-APIs-for-dealing-with-time.patch
-Patch6:%{name}-%{version}-Make-logging-async-signal-safe-wrt-time-stamp-genera.patch
-Patch7:%{name}-%{version}-Remove-time-APIs-from-src-util-util.h.patch
-Patch8:%{name}-%{version}-spec-mark-directories-in-var-run-as-ghosts.patch
-Patch9:%{name}-%{version}-Fix-incorrect-symbols-for-virtime.h-module-breaking-.patch
-Patch10:%{name}-%{version}-spec-add-dmidecode-as-prereq.patch
-Patch11:%{name}-%{version}-spec-don-t-use-chkconfig-list.patch
-Patch12:%{name}-%{version}-spec-fix-logic-bug-in-deciding-to-turn-on-cgconfig.patch
-Patch13:%{name}-%{version}-network-don-t-add-iptables-rules-for-externally-mana.patch
-Patch14:%{name}-%{version}-test-replace-deprecated-fedora-13-machine.patch
-Patch15:%{name}-%{version}-qemu-replace-deprecated-fedora-13-machine.patch
-Patch16:%{name}-%{version}-spec-make-it-easier-to-autoreconf-when-building-rpm.patch 
-Patch17:%{name}-%{version}-Avoid-crash-in-shunloadtest.patch 
-# Fix crash when migrating many guests with vdsm (bz 785789)
-Patch18: %{name}-large-migrate-crash.patch
-# Fix libvirtd hang in vmware guest (bz 796451)
-Patch19: %{name}-dmidecode-hang.patch
-# Don't start HAL in init script (bz 789234)
-Patch20: %{name}-no-init-hal-start.patch
-# Fix storage lookup errors with empty lvm pool (bz 782261)
-Patch21: %{name}-empty-lvm-hang.patch
-# Fix test failures with new gnutls
-Patch22: %{name}-gnutls-test-failures.patch
-# Fix typo in chkconfig commandline for specfile
-Patch23: %{name}-%{version}-specfile-fix-typo-in-chkconfig-commandline.patch
+
+%if %(echo %{version} | grep -o \\. | wc -l) == 3
+%define mainturl stable_updates/
+%endif
+Source: http://libvirt.org/sources/%{?mainturl}libvirt-%{version}.tar.gz
+# Replace fedora-13->pc-0.14 to prep for qemu removal (bz 754772)
+# keep: keeping this for the lifetime of F17, gone for newer releases
+Patch1: %{name}-qemu-replace-deprecated-fedora-13-machine.patch
+# Emit spice graphics events (bz 784813)
+# keep: F16 feature backport that won't hit 0.9.6 maint
+Patch2: %{name}-emit-spice-events.patch
+# Add usbredir spice channel (bz 821469)
+# keep: fedora feature backport that won't hit 0.9.11 maint
+Patch3: %{name}-add-usbredir-spice-channel.patch
+# Add default spice channel (bz 821474)
+# keep: fedora feature backport that won't hit 0.9.11 maint
+Patch4: %{name}-add-default-spice-channel.patch
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
@@ -600,25 +587,6 @@ of recent versions of Linux (and other OSes).
 %patch2 -p1
 %patch3 -p1
 %patch4 -p1
-%patch5 -p1
-%patch6 -p1
-%patch7 -p1
-%patch8 -p1
-%patch9 -p1
-%patch10 -p1
-%patch11 -p1
-%patch12 -p1
-%patch13 -p1
-%patch14 -p1
-%patch15 -p1
-%patch16 -p1
-%patch17 -p1
-%patch18 -p1
-%patch19 -p1
-%patch20 -p1
-%patch21 -p1
-%patch22 -p1
-%patch23 -p1
 
 %build
 %if ! %{with_xen}
@@ -1202,6 +1170,10 @@ fi
 %doc %{_datadir}/gtk-doc/html/libvirt/*.png
 %doc %{_datadir}/gtk-doc/html/libvirt/*.css
 
+%dir %{_datadir}/libvirt/api/
+%{_datadir}/libvirt/api/libvirt-api.xml
+%{_datadir}/libvirt/api/libvirt-qemu-api.xml
+
 %doc docs/*.html docs/html docs/*.gif
 %doc docs/libvirt-api.xml
 %doc examples/hellolibvirt
@@ -1227,6 +1199,19 @@ fi
 %endif
 
 %changelog
+* Fri Jun 15 2012 Cole Robinson <crobinso@redhat.com> - 0.9.6.1-1
+- Rebased to version 0.9.6.1
+- Emit spice graphics events (bz 784813)
+- Add usbredir spice channel (bz 821469)
+- Add default spice channel (bz 821474)
+- Various stream fixes and improvements (bz 743900)
+- Fix state syncing when xen domain shuts down (bz 746007)
+- Don't show <console> for xen dom0 (bz 752271)
+- Fix selinux denial on /usr/libexec/pt_chown from LXC (bz 785411)
+- Don't flood LXC log file (bz 785431)
+- Fix several double close bugs (bz 827127)
+- Fix PCI assignment for USB2.0 controllers (bz 822160)
+
 * Fri Mar 30 2012 Osier Yang <jyang@redhat.com> - 0.9.6-6
 - fix typo in chkconfig commandline for specfile - Bug 786890
 

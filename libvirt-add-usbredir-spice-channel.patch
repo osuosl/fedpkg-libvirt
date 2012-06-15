@@ -1,0 +1,196 @@
+From b8c86d80df4ba6c682f05974892f5d7ab8f317a9 Mon Sep 17 00:00:00 2001
+From: Alon Levy <alevy@redhat.com>
+Date: Tue, 8 May 2012 16:00:28 +0300
+Subject: [PATCH] domain_conf: add "usbredir" to list of valid spice channels
+
+Add "usbredir" channel to list of recognized spice channels.
+
+RHBZ: 819498
+
+Signed-off-by: Alon Levy <alevy@redhat.com>
+(cherry picked from commit 4e78ffb63489071c4100678ed88d3111284555e8)
+Signed-off-by: Cole Robinson <crobinso@redhat.com>
+---
+ docs/formatdomain.html.in                          |    8 ++-
+ docs/schemas/domaincommon.rng                      |    1 +
+ src/conf/domain_conf.c                             |    3 +-
+ src/conf/domain_conf.h                             |    1 +
+ .../qemuxml2argv-graphics-spice-usb-redir.args     |   16 ++++++
+ .../qemuxml2argv-graphics-spice-usb-redir.xml      |   53 ++++++++++++++++++++
+ tests/qemuxml2argvtest.c                           |    6 ++
+ 7 files changed, 84 insertions(+), 4 deletions(-)
+ create mode 100644 tests/qemuxml2argvdata/qemuxml2argv-graphics-spice-usb-redir.args
+ create mode 100644 tests/qemuxml2argvdata/qemuxml2argv-graphics-spice-usb-redir.xml
+
+diff --git a/docs/formatdomain.html.in b/docs/formatdomain.html.in
+index 390476d..d082697 100644
+--- a/docs/formatdomain.html.in
++++ b/docs/formatdomain.html.in
+@@ -2317,9 +2317,11 @@ qemu-kvm -net nic,model=? /dev/null
+               main &lt;graphics&gt; element. Valid channel names
+               include <code>main</code>, <code>display</code>,
+               <code>inputs</code>, <code>cursor</code>,
+-              <code>playback</code>, <code>record</code>;
+-              and <span class="since">since
+-              0.8.8</span>: <code>smartcard</code>.
++              <code>playback</code>, <code>record</code>
++              (all <span class="since"> since 0.8.6</span>);
++              <code>smartcard</code> (<span class="since">since
++              0.8.8</span>); and <code>usbredir</code>
++              (<span class="since">since 0.9.12</span>).
+             </p>
+             <pre>
+   &lt;graphics type='spice' port='-1' tlsPort='-1' autoport='yes'&gt;
+diff --git a/docs/schemas/domaincommon.rng b/docs/schemas/domaincommon.rng
+index 9f8d292..fe81c26 100644
+--- a/docs/schemas/domaincommon.rng
++++ b/docs/schemas/domaincommon.rng
+@@ -1401,6 +1401,7 @@
+                     <value>playback</value>
+                     <value>record</value>
+                     <value>smartcard</value>
++                    <value>usbredir</value>
+                   </choice>
+                 </attribute>
+                 <attribute name="mode">
+diff --git a/src/conf/domain_conf.c b/src/conf/domain_conf.c
+index 2f9da71..9cc1644 100644
+--- a/src/conf/domain_conf.c
++++ b/src/conf/domain_conf.c
+@@ -389,7 +389,8 @@ VIR_ENUM_IMPL(virDomainGraphicsSpiceChannelName,
+               "cursor",
+               "playback",
+               "record",
+-              "smartcard");
++              "smartcard",
++              "usbredir");
+ 
+ VIR_ENUM_IMPL(virDomainGraphicsSpiceChannelMode,
+               VIR_DOMAIN_GRAPHICS_SPICE_CHANNEL_MODE_LAST,
+diff --git a/src/conf/domain_conf.h b/src/conf/domain_conf.h
+index f2cd8eb..d40fda6 100644
+--- a/src/conf/domain_conf.h
++++ b/src/conf/domain_conf.h
+@@ -797,6 +797,7 @@ enum virDomainGraphicsSpiceChannelName {
+     VIR_DOMAIN_GRAPHICS_SPICE_CHANNEL_PLAYBACK,
+     VIR_DOMAIN_GRAPHICS_SPICE_CHANNEL_RECORD,
+     VIR_DOMAIN_GRAPHICS_SPICE_CHANNEL_SMARTCARD,
++    VIR_DOMAIN_GRAPHICS_SPICE_CHANNEL_USBREDIR,
+ 
+     VIR_DOMAIN_GRAPHICS_SPICE_CHANNEL_LAST
+ };
+diff --git a/tests/qemuxml2argvdata/qemuxml2argv-graphics-spice-usb-redir.args b/tests/qemuxml2argvdata/qemuxml2argv-graphics-spice-usb-redir.args
+new file mode 100644
+index 0000000..35e51a7
+--- /dev/null
++++ b/tests/qemuxml2argvdata/qemuxml2argv-graphics-spice-usb-redir.args
+@@ -0,0 +1,16 @@
++LC_ALL=C PATH=/bin HOME=/home/test USER=test LOGNAME=test QEMU_AUDIO_DRV=spice /usr/bin/qemu -S -M pc -m 214 -smp 1 -nodefconfig -nodefaults -chardev socket,id=charmonitor,path=/tmp/test-monitor,server,nowait -mon chardev=charmonitor,id=monitor,mode=readline -no-acpi -boot c \
++-device ich9-usb-ehci1,id=usb,bus=pci.0,addr=0x4.0x7 \
++-device ich9-usb-uhci1,masterbus=usb.0,firstport=0,bus=pci.0,multifunction=on,addr=0x4 \
++-device ich9-usb-uhci2,masterbus=usb.0,firstport=2,bus=pci.0,addr=0x4.0x1 \
++-device ich9-usb-uhci3,masterbus=usb.0,firstport=4,bus=pci.0,addr=0x4.0x2 \
++-spice port=5903,tls-port=5904,addr=127.0.0.1,\
++x509-dir=/etc/pki/libvirt-spice,tls-channel=main,plaintext-channel=inputs,\
++tls-channel=usbredir,\
++image-compression=auto_glz,jpeg-wan-compression=auto,zlib-glz-wan-compression=auto,\
++playback-compression=on,streaming-video=filter,disable-copy-paste \
++-vga cirrus \
++-chardev socket,id=charredir0,host=localhost,port=4000 \
++-device usb-redir,chardev=charredir0,id=redir0 \
++-chardev spicevmc,id=charredir1,name=usbredir \
++-device usb-redir,chardev=charredir1,id=redir1,bus=usb.0,port=4 \
++-device virtio-balloon-pci,id=balloon0,bus=pci.0,addr=0x3
+diff --git a/tests/qemuxml2argvdata/qemuxml2argv-graphics-spice-usb-redir.xml b/tests/qemuxml2argvdata/qemuxml2argv-graphics-spice-usb-redir.xml
+new file mode 100644
+index 0000000..1dc23bd
+--- /dev/null
++++ b/tests/qemuxml2argvdata/qemuxml2argv-graphics-spice-usb-redir.xml
+@@ -0,0 +1,53 @@
++<domain type='qemu'>
++  <name>QEMUGuest1</name>
++  <uuid>c7a5fdbd-edaf-9455-926a-d65c16db1809</uuid>
++  <memory unit='KiB'>219136</memory>
++  <currentMemory unit='KiB'>219136</currentMemory>
++  <vcpu>1</vcpu>
++  <os>
++    <type arch='i686' machine='pc'>hvm</type>
++    <boot dev='hd'/>
++  </os>
++  <clock offset='utc'/>
++  <on_poweroff>destroy</on_poweroff>
++  <on_reboot>restart</on_reboot>
++  <on_crash>destroy</on_crash>
++  <devices>
++    <emulator>/usr/bin/qemu</emulator>
++    <graphics type='spice' port='5903' tlsPort='5904' autoport='no' listen='127.0.0.1'>
++      <listen type='address' address='127.0.0.1'/>
++      <channel name='main' mode='secure'/>
++      <channel name='inputs' mode='insecure'/>
++      <channel name='usbredir' mode='secure'/>
++      <image compression='auto_glz'/>
++      <jpeg compression='auto'/>
++      <zlib compression='auto'/>
++      <playback compression='on'/>
++      <streaming mode='filter'/>
++      <clipboard copypaste='no'/>
++    </graphics>
++    <controller type='usb' index='0' model='ich9-ehci1'>
++      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x7'/>
++    </controller>
++    <controller type='usb' index='0' model='ich9-uhci1'>
++      <master startport='0'/>
++      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0' multifunction='on'/>
++    </controller>
++    <controller type='usb' index='0' model='ich9-uhci2'>
++      <master startport='2'/>
++      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x1'/>
++    </controller>
++    <controller type='usb' index='0' model='ich9-uhci3'>
++      <master startport='4'/>
++      <address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x2'/>
++    </controller>
++    <redirdev bus='usb' type='tcp'>
++      <source mode='connect' host='localhost' service='4000'/>
++      <protocol type='raw'/>
++    </redirdev>
++    <redirdev bus='usb' type='spicevmc'>
++      <address type='usb' bus='0' port='4'/>
++    </redirdev>
++    <memballoon model='virtio'/>
++  </devices>
++</domain>
+diff --git a/tests/qemuxml2argvtest.c b/tests/qemuxml2argvtest.c
+index 1dc6a01..d5475c5 100644
+--- a/tests/qemuxml2argvtest.c
++++ b/tests/qemuxml2argvtest.c
+@@ -405,6 +405,12 @@ mymain(void)
+             QEMU_CAPS_VGA, QEMU_CAPS_VGA_QXL,
+             QEMU_CAPS_DEVICE, QEMU_CAPS_SPICE,
+             QEMU_CAPS_DEVICE_QXL_VGA);
++    DO_TEST("graphics-spice-usb-redir", false,
++            QEMU_CAPS_VGA, QEMU_CAPS_SPICE,
++            QEMU_CAPS_CHARDEV, QEMU_CAPS_DEVICE, QEMU_CAPS_NODEFCONFIG,
++            QEMU_CAPS_PCI_MULTIFUNCTION, QEMU_CAPS_USB_HUB,
++            QEMU_CAPS_ICH9_USB_EHCI1, QEMU_CAPS_USB_REDIR,
++            QEMU_CAPS_CHARDEV_SPICEVMC);
+ 
+     DO_TEST("input-usbmouse", false, NONE);
+     DO_TEST("input-usbtablet", false, NONE);
+-- 
+1.7.7.6
+
+diff -rup libvirt-0.9.6.1/tests/qemuxml2argvdata/qemuxml2argv-graphics-spice-usb-redir.xml foo/tests/qemuxml2argvdata/qemuxml2argv-graphics-spice-usb-redir.xml
+--- libvirt-0.9.6.1/tests/qemuxml2argvdata/qemuxml2argv-graphics-spice-usb-redir.xml	2012-06-15 17:10:09.086979189 -0400
++++ foo/tests/qemuxml2argvdata/qemuxml2argv-graphics-spice-usb-redir.xml	2012-06-15 17:21:08.788770706 -0400
+@@ -1,8 +1,8 @@
+ <domain type='qemu'>
+   <name>QEMUGuest1</name>
+   <uuid>c7a5fdbd-edaf-9455-926a-d65c16db1809</uuid>
+-  <memory unit='KiB'>219136</memory>
+-  <currentMemory unit='KiB'>219136</currentMemory>
++  <memory>219136</memory>
++  <currentMemory>219136</currentMemory>
+   <vcpu>1</vcpu>
+   <os>
+     <type arch='i686' machine='pc'>hvm</type>

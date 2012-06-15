@@ -1,0 +1,156 @@
+From eaf056bf995558ecf6620ce031287f3aa81b66de Mon Sep 17 00:00:00 2001
+From: Laine Stump <laine@laine.org>
+Date: Tue, 6 Dec 2011 12:47:28 -0500
+Subject: [PATCH 1/2] qemu: replace deprecated fedora-13 machine type with
+ pc-0.14
+
+This addresses https://bugzilla.redhat.com/show_bug.cgi?id=754772 .
+It should only be applied to Fedora builds of libvirt, F15 and
+later, so there is no upstream equivalent patch.
+
+Background:
+
+During the lifetime of Fedora 13, some features were backported into
+the F13 build of qemu-kvm from upstream. These features were part of
+the functionality of machine type "pc-0.13" in upstream qemu-kvm, so a
+special "fedora-13" machine type was created for the F13 qemu-kvm.
+Since "fedora-13" became the new "canonical machine type", all new
+domains created with F13 libvirt tools by default contained that
+machine type in their configuration file.
+
+In Fedora 14, a patch was made to qemu to treat the fedora-13 machine
+type as equivalent to "pc-0.13". When Fedora 15 was released, this was
+inadvertently changed to make it equivalent to "pc-0.14".
+
+With the release of Fedora 16, qemu-kvm initially removed support for
+this machine type, which caused failure of many guest configurations
+to start. qemu-kvm subsequently re-added the patch to support
+fedora-13 (as equivalent to pc-0.14), but with the promise that they
+could remove it with the release of Fedora 17. (see
+https://bugzilla.redhat.com/show_bug.cgi?id=748218 ).
+
+Solution:
+
+In order to create a repeat of the recent problems, prior to F17
+existing guest configurations need to be updated to change fedora-13
+to pc-0.14 (which has been determined to be equivalent for all
+practical purposes in both F15 and F16). That's what this patch does:
+
+1) Each time libvirtd is started, it calls virDomainLoadAllConfigs()
+which calls virDomainLoadConfig(); this function has been modified to
+check for os.machine == "fedora-13", and change it to "pc-0.14" then
+write the updated config back to disk.
+
+2) Also, any other time a domain definition is parsed, the parsed
+version in memory is changed to turn "fedora-13" into "pc-0.14". This
+handles domains that had been saved to disk prior to the upgrade, and
+are subsequently restarted.
+
+3) Finally, whenever a domain definition is formatted into a string,
+any occurrence of fedora-13 is replaced with pc-0.14 *directly in the
+virDomainDef* (to avoid multiple warning messages for the same object
+when it's formatted multiple times). This should deal with those cases
+where a domain was running at the time of upgrade, and is later
+saved/snapshotted.
+
+I had considered doing this with some sed commands in the specfile,
+but that wouldn't do anything to help the xml saved in image files.
+
+(Also, one of the xml tests was using the machine type "fedora-13",
+and since that machine type is treated specially by the rest of this
+patch, it was failing. That has been changed in a separate patch,
+which must be applied with this patch, and which *is* also upstream).
+---
+ src/conf/domain_conf.c |   62 +++++++++++++++++++++++++++++++++++++++++++++--
+ 1 files changed, 59 insertions(+), 3 deletions(-)
+
+diff --git a/src/conf/domain_conf.c b/src/conf/domain_conf.c
+index 318f523..7906bb8 100644
+--- a/src/conf/domain_conf.c
++++ b/src/conf/domain_conf.c
+@@ -7500,7 +7500,25 @@ virDomainDefPtr virDomainDefParseString(virCapsPtr caps,
+                                         unsigned int expectedVirtTypes,
+                                         unsigned int flags)
+ {
+-    return virDomainDefParse(xmlStr, NULL, caps, expectedVirtTypes, flags);
++    virDomainDefPtr def
++        = virDomainDefParse(xmlStr, NULL, caps, expectedVirtTypes, flags);
++
++    /* Fedora-specific HACK - treat fedora-13 and pc-0.14 as equivalent.
++     * This handles the case of domains that had been saved to an image file
++     * prior to upgrade (save or snapshot), then restarted/reverted.
++     */
++    if (def && STREQ_NULLABLE(def->os.machine, "fedora-13")) {
++        VIR_FREE(def->os.machine);
++        if (!(def->os.machine = strdup("pc-0.14"))) {
++            virReportOOMError();
++            virDomainDefFree(def);
++            def = NULL;
++        } else {
++            VIR_WARN("Replacing deprecated 'fedora-13' machine type "
++                     "with equivalent 'pc-0.14' in domain %s xml", def->name);
++        }
++   }
++    return def;
+ }
+ 
+ virDomainDefPtr virDomainDefParseFile(virCapsPtr caps,
+@@ -10648,8 +10666,30 @@ virDomainDefFormatInternal(virDomainDefPtr def,
+     virBufferAddLit(buf, "    <type");
+     if (def->os.arch)
+         virBufferAsprintf(buf, " arch='%s'", def->os.arch);
+-    if (def->os.machine)
+-        virBufferAsprintf(buf, " machine='%s'", def->os.machine);
++    if (def->os.machine) {
++        /* Fedora-specific HACK - replace "fedora-13" with "pc-0.14"
++         * (in the original DomainDef as well as in the xml output).
++         * This will catch XML being written to save/migration images
++         * of domains that were running when libvirtd was restarted at
++         * the time of upgrade.
++         */
++        if (STREQ_NULLABLE(def->os.machine, "fedora-13")) {
++            virBufferAddLit(buf, " machine='pc-0.14'");
++            VIR_WARN("substituting machine type 'fedora-13' with 'pc-0.14' "
++                     "in domain %s", def->name);
++            /* It's not exactly nice to modify the source object,
++             * but sometimes virDomainFormat is called > 100 times for the
++             * same object, which would result in far too many warning logs.
++             */
++            VIR_FREE(def->os.machine);
++            if (!(def->os.machine = strdup("pc-0.14"))) {
++                virReportOOMError();
++                goto cleanup;
++            }
++        } else {
++            virBufferAsprintf(buf, " machine='%s'", def->os.machine);
++        }
++    }
+     /*
+      * HACK: For xen driver we previously used bogus 'linux' as the
+      * os type for paravirt, whereas capabilities declare it to
+@@ -11100,6 +11140,22 @@ static virDomainObjPtr virDomainLoadConfig(virCapsPtr caps,
+                                       VIR_DOMAIN_XML_INACTIVE)))
+         goto error;
+ 
++    /* Fedora-specific HACK - replace "fedora-13" with "pc-0.14".
++     * This updates all config files at the first restart of libvirt
++     * after upgrade.
++     */
++    if (STREQ_NULLABLE(def->os.machine, "fedora-13")) {
++        VIR_FREE(def->os.machine);
++        if (!(def->os.machine = strdup("pc-0.14"))) {
++            virReportOOMError();
++            goto error;
++        }
++        VIR_WARN("Replacing deprecated 'fedora-13' machine type "
++                 "with equivalent 'pc-0.14' in domain %s configuration file", name);
++        if (virDomainSaveConfig(configDir, def) < 0)
++            goto error;
++    }
++
+     if ((autostartLink = virDomainConfigFile(autostartDir, name)) == NULL)
+         goto error;
+ 
+-- 
+1.7.7.4
+

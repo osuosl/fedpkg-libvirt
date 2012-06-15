@@ -1,0 +1,184 @@
+From a9311c363defcba7479fdabfb4862bcf851a6b7c Mon Sep 17 00:00:00 2001
+From: Alon Levy <alevy@redhat.com>
+Date: Tue, 8 May 2012 20:42:44 +0300
+Subject: [PATCH] domain_conf: add "default" to list of valid spice channels
+
+qemu's behavior in this case is to change the spice server behavior to
+require secure connection to any channel not otherwise specified as
+being in plaintext mode. libvirt doesn't currently allow requesting this
+(via plaintext-channel=<channel name>).
+
+RHBZ: 819499
+
+Signed-off-by: Alon Levy <alevy@redhat.com>
+(cherry picked from commit ba97e4edc6aa439a4f1e70855cf4503181efdb7f)
+
+Conflicts:
+
+	src/conf/domain_conf.c
+Signed-off-by: Cole Robinson <crobinso@redhat.com>
+---
+ docs/formatdomain.html.in                          |    7 +++++++
+ docs/schemas/domaincommon.rng                      |    9 +++++++++
+ src/conf/domain_conf.c                             |   20 ++++++++++++++++++++
+ src/conf/domain_conf.h                             |    1 +
+ src/qemu/qemu_command.c                            |   13 +++++++++++++
+ .../qemuxml2argv-graphics-spice.args               |    2 +-
+ .../qemuxml2argv-graphics-spice.xml                |    2 +-
+ 7 files changed, 52 insertions(+), 2 deletions(-)
+
+diff --git a/docs/formatdomain.html.in b/docs/formatdomain.html.in
+index d082697..db5fa9b 100644
+--- a/docs/formatdomain.html.in
++++ b/docs/formatdomain.html.in
+@@ -2308,6 +2308,13 @@ qemu-kvm -net nic,model=? /dev/null
+               <span class="since">Since 0.9.3</span>
+               NB, this may not be supported by all hypervisors.
+               <span class="since">"spice" since 0.8.6</span>.
++              The <code>defaultMode</code> attribute sets the default channel
++              security policy, valid values are <code>secure</code>,
++              <code>insecure</code> and the default <code>any</code>
++              (which is secure if possible, but falls back to insecure
++              rather than erroring out if no secure path is
++              available). <span class="since">"defaultMode" since
++              0.9.12</span>.
+             </p>
+             <p>
+               When SPICE has both a normal and TLS secured TCP port
+diff --git a/docs/schemas/domaincommon.rng b/docs/schemas/domaincommon.rng
+index fe81c26..0d6edc8 100644
+--- a/docs/schemas/domaincommon.rng
++++ b/docs/schemas/domaincommon.rng
+@@ -1388,6 +1388,15 @@
+               </choice>
+             </attribute>
+           </optional>
++          <optional>
++            <attribute name="defaultMode">
++              <choice>
++                <value>any</value>
++                <value>secure</value>
++                <value>insecure</value>
++              </choice>
++            </attribute>
++          </optional>
+           <interleave>
+             <ref name="listenElements"/>
+             <zeroOrMore>
+diff --git a/src/conf/domain_conf.c b/src/conf/domain_conf.c
+index 9cc1644..963768e 100644
+--- a/src/conf/domain_conf.c
++++ b/src/conf/domain_conf.c
+@@ -4689,6 +4689,8 @@ virDomainGraphicsDefParseXML(xmlNodePtr node,
+         char *port = virXMLPropString(node, "port");
+         char *tlsPort;
+         char *autoport;
++        char *defaultMode;
++        int defaultModeVal;
+ 
+         if (port) {
+             if (virStrToLong_i(port, NULL, 10, &def->data.spice.port) < 0) {
+@@ -4726,6 +4728,20 @@ virDomainGraphicsDefParseXML(xmlNodePtr node,
+             VIR_FREE(autoport);
+         }
+ 
++        def->data.spice.defaultMode = VIR_DOMAIN_GRAPHICS_SPICE_CHANNEL_MODE_ANY;
++
++        if ((defaultMode = virXMLPropString(node, "defaultMode")) != NULL) {
++            if ((defaultModeVal = virDomainGraphicsSpiceChannelModeTypeFromString(defaultMode)) < 0) {
++                virDomainReportError(VIR_ERR_INTERNAL_ERROR,
++                                     _("unknown default spice channel mode %s"),
++                                     defaultMode);
++                VIR_FREE(defaultMode);
++                goto error;
++            }
++            def->data.spice.defaultMode = defaultModeVal;
++            VIR_FREE(defaultMode);
++        }
++
+         def->data.spice.keymap = virXMLPropString(node, "keymap");
+ 
+         if (virDomainGraphicsAuthDefParseXML(node, &def->data.spice.auth,
+@@ -10311,6 +10327,10 @@ virDomainGraphicsDefFormat(virBufferPtr buf,
+             virBufferEscapeString(buf, " keymap='%s'",
+                                   def->data.spice.keymap);
+ 
++        if (def->data.spice.defaultMode != VIR_DOMAIN_GRAPHICS_SPICE_CHANNEL_MODE_ANY)
++            virBufferAsprintf(buf, " defaultMode='%s'",
++              virDomainGraphicsSpiceChannelModeTypeToString(def->data.spice.defaultMode));
++
+         virDomainGraphicsAuthDefFormatAttr(buf, &def->data.spice.auth, flags);
+         break;
+ 
+diff --git a/src/conf/domain_conf.h b/src/conf/domain_conf.h
+index d40fda6..f6df0ea 100644
+--- a/src/conf/domain_conf.h
++++ b/src/conf/domain_conf.h
+@@ -921,6 +921,7 @@ struct _virDomainGraphicsDef {
+             virDomainGraphicsAuthDef auth;
+             unsigned int autoport :1;
+             int channels[VIR_DOMAIN_GRAPHICS_SPICE_CHANNEL_LAST];
++            int defaultMode; /* enum virDomainGraphicsSpiceChannelMode */
+             int image;
+             int jpeg;
+             int zlib;
+diff --git a/src/qemu/qemu_command.c b/src/qemu/qemu_command.c
+index 366913b..ee192d3 100644
+--- a/src/qemu/qemu_command.c
++++ b/src/qemu/qemu_command.c
+@@ -4720,6 +4720,7 @@ qemuBuildCommandLine(virConnectPtr conn,
+         const char *listenAddr = NULL;
+         char *netAddr = NULL;
+         int ret;
++        int defaultMode = def->graphics[0]->data.spice.defaultMode;
+ 
+         if (!qemuCapsGet(qemuCaps, QEMU_CAPS_SPICE)) {
+             qemuReportError(VIR_ERR_CONFIG_UNSUPPORTED, "%s",
+@@ -4781,6 +4782,18 @@ qemuBuildCommandLine(virConnectPtr conn,
+             virBufferAsprintf(&opt, ",x509-dir=%s",
+                               driver->spiceTLSx509certdir);
+ 
++        switch (defaultMode) {
++        case VIR_DOMAIN_GRAPHICS_SPICE_CHANNEL_MODE_SECURE:
++            virBufferAsprintf(&opt, ",tls-channel=default");
++            break;
++        case VIR_DOMAIN_GRAPHICS_SPICE_CHANNEL_MODE_INSECURE:
++            virBufferAsprintf(&opt, ",plaintext-channel=default");
++            break;
++        case VIR_DOMAIN_GRAPHICS_SPICE_CHANNEL_MODE_ANY:
++            /* nothing */
++            break;
++        }
++
+         for (i = 0 ; i < VIR_DOMAIN_GRAPHICS_SPICE_CHANNEL_LAST ; i++) {
+             int mode = def->graphics[0]->data.spice.channels[i];
+             switch (mode) {
+diff --git a/tests/qemuxml2argvdata/qemuxml2argv-graphics-spice.args b/tests/qemuxml2argvdata/qemuxml2argv-graphics-spice.args
+index c9fdb99..698e39c 100644
+--- a/tests/qemuxml2argvdata/qemuxml2argv-graphics-spice.args
++++ b/tests/qemuxml2argvdata/qemuxml2argv-graphics-spice.args
+@@ -2,7 +2,7 @@ LC_ALL=C PATH=/bin HOME=/home/test USER=test LOGNAME=test QEMU_AUDIO_DRV=spice \
+ /usr/bin/qemu -S -M pc -m 214 -smp 1 -nodefaults -monitor \
+ unix:/tmp/test-monitor,server,nowait -no-acpi -boot c -hda \
+ /dev/HostVG/QEMUGuest1 -usb -spice port=5903,tls-port=5904,addr=127.0.0.1,\
+-x509-dir=/etc/pki/libvirt-spice,tls-channel=main,plaintext-channel=inputs,\
++x509-dir=/etc/pki/libvirt-spice,tls-channel=default,tls-channel=main,plaintext-channel=inputs,\
+ image-compression=auto_glz,jpeg-wan-compression=auto,zlib-glz-wan-compression=auto,\
+ playback-compression=on,streaming-video=filter,disable-copy-paste -vga \
+ qxl -global qxl.vram_size=18874368 -device qxl,id=video1,vram_size=33554432,bus=pci.0,addr=0x4 \
+diff --git a/tests/qemuxml2argvdata/qemuxml2argv-graphics-spice.xml b/tests/qemuxml2argvdata/qemuxml2argv-graphics-spice.xml
+index 5313b3a..29f20ab 100644
+--- a/tests/qemuxml2argvdata/qemuxml2argv-graphics-spice.xml
++++ b/tests/qemuxml2argvdata/qemuxml2argv-graphics-spice.xml
+@@ -21,7 +21,7 @@
+     </disk>
+     <controller type='ide' index='0'/>
+     <input type='mouse' bus='ps2'/>
+-    <graphics type='spice' port='5903' tlsPort='5904' autoport='no' listen='127.0.0.1'>
++    <graphics type='spice' port='5903' tlsPort='5904' autoport='no' listen='127.0.0.1' defaultMode='secure'>
+       <listen type='address' address='127.0.0.1'/>
+       <channel name='main' mode='secure'/>
+       <channel name='inputs' mode='insecure'/>
+-- 
+1.7.7.6
+
