@@ -242,7 +242,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 0.9.6.1
+Version: 0.9.6.2
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -1199,6 +1199,10 @@ fi
 %endif
 
 %changelog
+* Mon Aug 13 2012 Cole Robinson <crobinso@redhat.com> - 0.9.6.2-1
+- Rebased to version 0.9.6.2
+- Fix crash in virTypedParameterArrayClear (bz 844745, bz 844734)
+
 * Fri Jun 15 2012 Cole Robinson <crobinso@redhat.com> - 0.9.6.1-1
 - Rebased to version 0.9.6.1
 - Emit spice graphics events (bz 784813)
