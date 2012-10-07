@@ -242,7 +242,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 0.9.6.2
+Version: 0.9.6.3
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -253,16 +253,16 @@ Group: Development/Libraries
 Source: http://libvirt.org/sources/%{?mainturl}libvirt-%{version}.tar.gz
 # Replace fedora-13->pc-0.14 to prep for qemu removal (bz 754772)
 # keep: keeping this for the lifetime of F17, gone for newer releases
-Patch1: %{name}-qemu-replace-deprecated-fedora-13-machine.patch
+Patch1: libvirt-qemu-replace-deprecated-fedora-13-machine.patch
 # Emit spice graphics events (bz 784813)
 # keep: F16 feature backport that won't hit 0.9.6 maint
-Patch2: %{name}-emit-spice-events.patch
+Patch2: libvirt-emit-spice-events.patch
 # Add usbredir spice channel (bz 821469)
 # keep: fedora feature backport that won't hit 0.9.11 maint
-Patch3: %{name}-add-usbredir-spice-channel.patch
+Patch3: libvirt-add-usbredir-spice-channel.patch
 # Add default spice channel (bz 821474)
 # keep: fedora feature backport that won't hit 0.9.11 maint
-Patch4: %{name}-add-default-spice-channel.patch
+Patch4: libvirt-add-default-spice-channel.patch
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 URL: http://libvirt.org/
@@ -1199,6 +1199,10 @@ fi
 %endif
 
 %changelog
+* Sun Oct 07 2012 Cole Robinson <crobinso@redhat.com> - 0.9.6.3-1
+- Rebased to version 0.9.6.3
+- CVE-2012-4423 Fix null dereference (bz #857135, bz #857133)
+
 * Mon Aug 13 2012 Cole Robinson <crobinso@redhat.com> - 0.9.6.2-1
 - Rebased to version 0.9.6.2
 - Fix crash in virTypedParameterArrayClear (bz 844745, bz 844734)
