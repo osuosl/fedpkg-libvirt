@@ -320,7 +320,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 0.10.2.1
-Release: 2%{?dist}%{?extra_release}
+Release: 3%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -333,6 +333,10 @@ Source: http://libvirt.org/sources/%{?mainturl}libvirt-%{version}.tar.gz
 # Fix qemu -> qemu-system-i386 (RHBZ#857026).
 # keep: This patch is Fedora-specific and not upstream.
 Patch1: 0001-Use-qemu-system-i386-as-binary-instead-of-qemu.patch
+# Cleanly save session VMs on logout/shutdown (bz 872254)
+# keep: Fixed upstream, but using patches not suitable for stable
+Patch2: libvirt-dbus.patch
+Patch3: libvirt-save-with-session.patch
 
 
 
@@ -1051,6 +1055,8 @@ of recent versions of Linux (and other OSes).
 %prep
 %setup -q
 %patch1 -p1
+%patch2 -p1
+%patch3 -p1
 
 %build
 %if ! %{with_xen}
@@ -1903,6 +1909,9 @@ rm -f $RPM_BUILD_ROOT%{_sysconfdir}/sysctl.d/libvirtd
 %endif
 
 %changelog
+* Tue Nov 13 2012 Cole Robinson <crobinso@redhat.com> - 0.10.2.1-3
+- Cleanly save session VMs on logout/shutdown (bz #872254)
+
 * Tue Oct 30 2012 Cole Robinson <crobinso@redhat.com> - 0.10.2.1-2
 - Disable libxl on F18 too
 
