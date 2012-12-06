@@ -53,7 +53,13 @@
 
 %define with_qemu_tcg      %{with_qemu}
 # Change if we ever provide qemu-kvm binaries on non-x86 hosts
-%ifarch %{ix86} x86_64
+%if 0%{?fedora} >= 18
+%define qemu_kvm_arches    %{ix86} x86_64 ppc64 s390x
+%else
+%define qemu_kvm_arches    %{ix86} x86_64
+%endif
+
+%ifarch %{qemu_kvm_arches}
 %define with_qemu_kvm      %{with_qemu}
 %else
 %define with_qemu_kvm      0
@@ -320,7 +326,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 0.10.2.1
-Release: 3%{?dist}%{?extra_release}
+Release: 4%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -1909,6 +1915,9 @@ rm -f $RPM_BUILD_ROOT%{_sysconfdir}/sysctl.d/libvirtd
 %endif
 
 %changelog
+* Thu Dec 06 2012 Cole Robinson <crobinso@redhat.com> - 0.10.2.1-4
+- Add ppc64 and s390x as KVM arches for Fedora >= 18 (bz #872545)
+
 * Tue Nov 13 2012 Cole Robinson <crobinso@redhat.com> - 0.10.2.1-3
 - Cleanly save session VMs on logout/shutdown (bz #872254)
 
