@@ -323,10 +323,17 @@
 %define with_rhel5  0
 %endif
 
+%if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
+%define with_systemd_macros 1
+%else
+%define with_systemd_macros 0
+%endif
+
+
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 0.10.2.1
-Release: 4%{?dist}%{?extra_release}
+Version: 0.10.2.2
+Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -342,8 +349,9 @@ Patch1: 0001-Use-qemu-system-i386-as-binary-instead-of-qemu.patch
 # Cleanly save session VMs on logout/shutdown (bz 872254)
 # keep: Fixed upstream, but using patches not suitable for stable
 Patch2: libvirt-dbus.patch
+# Cleanly save session VMs on logout/shutdown (bz 872254)
+# keep: Fixed upstream, but using patches not suitable for stable
 Patch3: libvirt-save-with-session.patch
-
 
 
 %if %{with_libvirtd}
@@ -1468,11 +1476,14 @@ done
 %endif
 
 %if %{with_systemd}
+%if %{with_systemd_macros}
+%systemd_post libvirtd.service
+%else
 if [ $1 -eq 1 ] ; then
     # Initial installation
     /bin/systemctl enable libvirtd.service >/dev/null 2>&1 || :
-    /bin/systemctl enable cgconfig.service >/dev/null 2>&1 || :
 fi
+%endif
 %else
 %if %{with_cgconfig}
 # Starting with Fedora 16/RHEL-7, systemd automounts all cgroups,
@@ -1492,11 +1503,15 @@ fi
 
 %preun daemon
 %if %{with_systemd}
+%if %{with_systemd_macros}
+%systemd_preun libvirtd.service
+%else
 if [ $1 -eq 0 ] ; then
     # Package removal, not upgrade
     /bin/systemctl --no-reload disable libvirtd.service > /dev/null 2>&1 || :
     /bin/systemctl stop libvirtd.service > /dev/null 2>&1 || :
 fi
+%endif
 %else
 if [ $1 = 0 ]; then
     /sbin/service libvirtd stop 1>/dev/null 2>&1
@@ -1506,11 +1521,15 @@ fi
 
 %postun daemon
 %if %{with_systemd}
+%if %{with_systemd_macros}
+%systemd_postun_with_restart libvirtd.service
+%else
 /bin/systemctl daemon-reload >/dev/null 2>&1 || :
 if [ $1 -ge 1 ] ; then
     # Package upgrade, not uninstall
     /bin/systemctl try-restart libvirtd.service >/dev/null 2>&1 || :
 fi
+%endif
 %endif
 
 %if %{with_network}
@@ -1542,6 +1561,9 @@ fi
 %preun client
 
 %if %{with_systemd}
+%if %{with_systemd_macros}
+%systemd_preun libvirt-guests.service
+%endif
 %else
 if [ $1 = 0 ]; then
     /sbin/chkconfig --del libvirt-guests
@@ -1553,6 +1575,9 @@ fi
 
 /sbin/ldconfig
 %if %{with_systemd}
+%if %{with_systemd_macros}
+%systemd_post libvirt-guests.service
+%endif
 %else
 /sbin/chkconfig --add libvirt-guests
 %endif
@@ -1560,6 +1585,9 @@ fi
 %postun client -p /sbin/ldconfig
 
 %if %{with_systemd}
+%if %{with_systemd_macros}
+%systemd_postun_with_restart libvirt-guests.service
+%endif
 %triggerun client -- libvirt < 0.9.4
 %{_bindir}/systemd-sysv-convert --save libvirt-guests >/dev/null 2>&1 ||:
 
@@ -1915,6 +1943,15 @@ rm -f $RPM_BUILD_ROOT%{_sysconfdir}/sysctl.d/libvirtd
 %endif
 
 %changelog
+* Sun Dec 09 2012 Cole Robinson <crobinso@redhat.com> - 0.10.2.2-1
+- Rebased to version 0.10.2.2
+- CVE-2012-3411: avoid open DNS proxy with dnsmasq (bz #874702, bz #882309)
+- Don't ignore address for USB disks (bz #861309)
+- Fix error with blkdeviotune (bz #872582)
+- Fix cloning LVM volume (bz #869607)
+- Fix VDSM error when libvirt doesn't format CPU topology (bz #876475)
+- Use systemd macros in spec file (bz #850186)
+
 * Thu Dec 06 2012 Cole Robinson <crobinso@redhat.com> - 0.10.2.1-4
 - Add ppc64 and s390x as KVM arches for Fedora >= 18 (bz #872545)
 
