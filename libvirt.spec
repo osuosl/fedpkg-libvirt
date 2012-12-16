@@ -333,7 +333,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 0.10.2.2
-Release: 1%{?dist}%{?extra_release}
+Release: 2%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -352,6 +352,10 @@ Patch2: libvirt-dbus.patch
 # Cleanly save session VMs on logout/shutdown (bz 872254)
 # keep: Fixed upstream, but using patches not suitable for stable
 Patch3: libvirt-save-with-session.patch
+# Fix conflict with NM launched dnsmasq (bz 886663)
+Patch4: 0001-network-prevent-dnsmasq-from-listening-on-localhost.patch
+# Fix selinux denials when launching non-kvm qemu guests (bz 885837)
+Patch5: 0002-Support-custom-svirt_tcg_t-context-for-TCG-based-gue.patch
 
 
 %if %{with_libvirtd}
@@ -1071,6 +1075,8 @@ of recent versions of Linux (and other OSes).
 %patch1 -p1
 %patch2 -p1
 %patch3 -p1
+%patch4 -p1
+%patch5 -p1
 
 %build
 %if ! %{with_xen}
@@ -1943,6 +1949,10 @@ rm -f $RPM_BUILD_ROOT%{_sysconfdir}/sysctl.d/libvirtd
 %endif
 
 %changelog
+* Sun Dec 16 2012 Cole Robinson <crobinso@redhat.com> - 0.10.2.2-2
+- Fix conflict with NM launched dnsmasq (bz #886663)
+- Fix selinux denials when launching non-kvm qemu guests (bz #885837)
+
 * Sun Dec 09 2012 Cole Robinson <crobinso@redhat.com> - 0.10.2.2-1
 - Rebased to version 0.10.2.2
 - CVE-2012-3411: avoid open DNS proxy with dnsmasq (bz #874702, bz #882309)
