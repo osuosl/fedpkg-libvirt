@@ -333,7 +333,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 0.10.2.2
-Release: 2%{?dist}%{?extra_release}
+Release: 3%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -1588,8 +1588,9 @@ fi
 /sbin/chkconfig --add libvirt-guests
 %endif
 
-%postun client -p /sbin/ldconfig
+%postun client
 
+/sbin/ldconfig
 %if %{with_systemd}
 %if %{with_systemd_macros}
 %systemd_postun_with_restart libvirt-guests.service
@@ -1949,6 +1950,9 @@ rm -f $RPM_BUILD_ROOT%{_sysconfdir}/sysctl.d/libvirtd
 %endif
 
 %changelog
+* Mon Dec 17 2012 Cole Robinson <crobinso@redhat.com> - 0.10.2.2-3
+- Fix scriplet warning when uninstalling libvirt-client (bz #888071)
+
 * Sun Dec 16 2012 Cole Robinson <crobinso@redhat.com> - 0.10.2.2-2
 - Fix conflict with NM launched dnsmasq (bz #886663)
 - Fix selinux denials when launching non-kvm qemu guests (bz #885837)
