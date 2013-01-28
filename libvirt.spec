@@ -273,8 +273,8 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 0.9.11.8
-Release: 2%{?dist}%{?extra_release}
+Version: 0.9.11.9
+Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 
@@ -297,8 +297,6 @@ Patch4: libvirt-sanlock-readonly-option.patch
 # Fix LXC domain startup with selinux=disabled (bz 858104)
 # keep: non upstream fix that doesn't apply to git head
 Patch5: libvirt-lxc-selinux-context-error.patch
-# Fix conflict with NM launched dnsmasq (bz 886663)
-Patch6: 0001-network-prevent-dnsmasq-from-listening-on-localhost.patch
 
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -771,7 +769,6 @@ of recent versions of Linux (and other OSes).
 %patch3 -p1
 %patch4 -p1
 %patch5 -p1
-%patch6 -p1
 
 %build
 %if ! %{with_xen}
@@ -1503,6 +1500,11 @@ rm -f $RPM_BUILD_ROOT%{_sysconfdir}/sysctl.d/libvirtd
 %endif
 
 %changelog
+* Mon Jan 28 2013 Cole Robinson <crobinso@redhat.com> - 0.9.11.9-1
+- Rebased to version 0.9.11.9
+- CVE-2013-0170 libvirt: use-after-free in virNetMessageFree() (bz #893450, bz
+  #905173)
+
 * Sun Dec 16 2012 Cole Robinson <crobinso@redhat.com> - 0.9.11.8-2
 - Fix conflict with NM launched dnsmasq (bz #886663)
 
