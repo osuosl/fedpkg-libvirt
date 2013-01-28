@@ -242,7 +242,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 0.9.6.3
+Version: 0.9.6.4
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -1199,6 +1199,11 @@ fi
 %endif
 
 %changelog
+* Mon Jan 28 2013 Cole Robinson <crobinso@redhat.com> - 0.9.6.4-1
+- Rebased to version 0.9.6.4
+- CVE-2013-0170 libvirt: use-after-free in virNetMessageFree() (bz #893450, bz
+  #905173)
+
 * Sun Oct 07 2012 Cole Robinson <crobinso@redhat.com> - 0.9.6.3-1
 - Rebased to version 0.9.6.3
 - CVE-2012-4423 Fix null dereference (bz #857135, bz #857133)
