@@ -114,6 +114,7 @@
 %define with_systemd       0%{!?_without_systemd:0}
 %define with_numad         0%{!?_without_numad:0}
 %define with_firewalld     0%{!?_without_firewalld:0}
+%define with_libssh2_transport 0%{!?_without_libssh2_transport:0}
 
 # Non-server/HV driver defaults which are always enabled
 %define with_python        0%{!?_without_python:1}
@@ -187,8 +188,8 @@
 %endif
 %endif
 
-# Fedora doesn't have new enough Xen for libxl until F16
-%if 0%{?fedora} && 0%{?fedora} < 16
+# Fedora doesn't have new enough Xen for libxl until F18
+%if 0%{?fedora} && 0%{?fedora} < 18
 %define with_libxl 0
 %endif
 
@@ -233,6 +234,11 @@
 %ifarch %{ix86} x86_64
 %define with_sanlock 0%{!?_without_sanlock:%{server_drivers}}
 %endif
+%endif
+
+# Enable libssh2 transport for new enough distros
+%if 0%{?fedora} >= 17 || 0%{?rhel} >= 6
+%define with_libssh2_transport 0%{!?_without_libssh2_transport:1}
 %endif
 
 # Disable some drivers when building without libvirt daemon.
@@ -300,10 +306,6 @@
 %define with_storage 0
 %endif
 
-# libxl driver doesn't build with Xen 4.2 in rawhide
-%if 0%{?fedora} && 0%{?fedora} >= 18
-%define with_libxl 0
-%endif
 
 # Force QEMU to run as non-root
 %if 0%{?fedora} >= 12 || 0%{?rhel} >= 6
@@ -332,8 +334,8 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 0.10.2.2
-Release: 3%{?dist}%{?extra_release}
+Version: 0.10.2.3
+Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -352,10 +354,9 @@ Patch2: libvirt-dbus.patch
 # Cleanly save session VMs on logout/shutdown (bz 872254)
 # keep: Fixed upstream, but using patches not suitable for stable
 Patch3: libvirt-save-with-session.patch
-# Fix conflict with NM launched dnsmasq (bz 886663)
-Patch4: 0001-network-prevent-dnsmasq-from-listening-on-localhost.patch
 # Fix selinux denials when launching non-kvm qemu guests (bz 885837)
-Patch5: 0002-Support-custom-svirt_tcg_t-context-for-TCG-based-gue.patch
+# keep: missed stable release
+Patch4: 0002-Support-custom-svirt_tcg_t-context-for-TCG-based-gue.patch
 
 
 %if %{with_libvirtd}
@@ -522,8 +523,12 @@ BuildRequires: numactl-devel
 %if %{with_capng}
 BuildRequires: libcap-ng-devel >= 0.5.0
 %endif
-%if %{with_phyp}
+%if %{with_phyp} || %{with_libssh2_transport}
+%if %{with_libssh2_transport}
+BuildRequires: libssh2-devel >= 1.3.0
+%else
 BuildRequires: libssh2-devel
+%endif
 %endif
 
 %if %{with_netcf}
@@ -645,7 +650,7 @@ Requires: PolicyKit >= 0.6
 %if %{with_storage_fs}
 Requires: nfs-utils
 # For mkfs
-Requires: util-linux-ng
+Requires: util-linux
 # For pool-build probing for existing pools
 BuildRequires: libblkid-devel >= 2.17
 # For glusterfs
@@ -704,11 +709,6 @@ Requires(postun): systemd-units
 %endif
 %if %{with_numad}
 Requires: numad
-%endif
-
-# libxl driver doesn't build with Xen 4.2 in rawhide
-%if ! %{with_libxl}
-Obsoletes: libvirt-daemon-driver-libxl
 %endif
 
 %description daemon
@@ -1028,6 +1028,9 @@ Requires: cyrus-sasl
 # work correctly & doesn't have onerous dependencies
 Requires: cyrus-sasl-md5
 %endif
+%if %{with_libssh2_transport}
+Requires: libssh2 >= 1.3.0
+%endif
 
 %description client
 Shared libraries and client binaries needed to access to the
@@ -1076,7 +1079,6 @@ of recent versions of Linux (and other OSes).
 %patch2 -p1
 %patch3 -p1
 %patch4 -p1
-%patch5 -p1
 
 %build
 %if ! %{with_xen}
@@ -1397,8 +1399,6 @@ rm -rf $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d/libvirtd.uml
 mv $RPM_BUILD_ROOT%{_datadir}/doc/libvirt-%{version} \
    $RPM_BUILD_ROOT%{_datadir}/doc/libvirt-docs-%{version}
 
-sed -i -e "s|$RPM_BUILD_ROOT||g" $RPM_BUILD_ROOT%{_sysconfdir}/rc.d/init.d/libvirt-guests
-
 %if %{with_dtrace}
 %ifarch %{power64} s390x x86_64 ia64 alpha sparc64
 mv $RPM_BUILD_ROOT%{_datadir}/systemtap/tapset/libvirt_probes.stp \
@@ -1406,6 +1406,10 @@ mv $RPM_BUILD_ROOT%{_datadir}/systemtap/tapset/libvirt_probes.stp \
 mv $RPM_BUILD_ROOT%{_datadir}/systemtap/tapset/libvirt_qemu_probes.stp \
    $RPM_BUILD_ROOT%{_datadir}/systemtap/tapset/libvirt_qemu_probes-64.stp
 %endif
+%endif
+
+%if 0%{?fedora} < 14 && 0%{?rhel} < 6
+rm -f $RPM_BUILD_ROOT%{_prefix}/lib/sysctl.d/libvirtd.conf
 %endif
 
 %clean
@@ -1647,9 +1651,7 @@ fi
 %config(noreplace) %{_sysconfdir}/sysconfig/libvirtd
 %config(noreplace) %{_sysconfdir}/libvirt/libvirtd.conf
 %if 0%{?fedora} >= 14 || 0%{?rhel} >= 6
-%config(noreplace) %{_sysconfdir}/sysctl.d/libvirtd
-%else
-rm -f $RPM_BUILD_ROOT%{_sysconfdir}/sysctl.d/libvirtd
+%config(noreplace) %{_prefix}/lib/sysctl.d/libvirtd.conf
 %endif
 %dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/qemu/
 %dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/lxc/
@@ -1902,11 +1904,13 @@ rm -f $RPM_BUILD_ROOT%{_sysconfdir}/sysctl.d/libvirtd
 
 %{_datadir}/libvirt/cpu_map.xml
 
-%{_sysconfdir}/rc.d/init.d/libvirt-guests
 %if %{with_systemd}
 %{_unitdir}/libvirt-guests.service
+%else
+%{_sysconfdir}/rc.d/init.d/libvirt-guests
 %endif
 %config(noreplace) %{_sysconfdir}/sysconfig/libvirt-guests
+%attr(0755, root, root) %{_libexecdir}/libvirt-guests.sh
 %dir %attr(0755, root, root) %{_localstatedir}/lib/libvirt/
 
 %if %{with_sasl}
@@ -1950,6 +1954,18 @@ rm -f $RPM_BUILD_ROOT%{_sysconfdir}/sysctl.d/libvirtd
 %endif
 
 %changelog
+* Mon Jan 28 2013 Cole Robinson <crobinso@redhat.com> - 0.10.2.3-1
+- Rebased to version 0.10.2.3
+- Fix libxl driver to build against xen 4.2 (bz #870689)
+- Fix possible crash when destroying guests (bz #877110)
+- Fix loading sysctl file (bz #887017)
+- Fix svirt memory leak (bz #890039)
+- Fix attaching PCI netdev to VM (bz #893131)
+- Fix libvirtd segfault on shutdown (bz #903194)
+- Raise mem limit to stop qemu processes from getting OOM killed (bz #903432)
+- CVE-2013-0170 libvirt: use-after-free in virNetMessageFree() (bz #893450, bz
+  #905173)
+
 * Mon Dec 17 2012 Cole Robinson <crobinso@redhat.com> - 0.10.2.2-3
 - Fix scriplet warning when uninstalling libvirt-client (bz #888071)
 
