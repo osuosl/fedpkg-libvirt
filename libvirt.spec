@@ -334,7 +334,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 0.10.2.3
+Version: 0.10.2.4
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -345,18 +345,16 @@ URL: http://libvirt.org/
 %define mainturl stable_updates/
 %endif
 Source: http://libvirt.org/sources/%{?mainturl}libvirt-%{version}.tar.gz
-# Fix qemu -> qemu-system-i386 (RHBZ#857026).
+
+# Fix qemu -> qemu-system-i386 (bz #857026).
 # keep: This patch is Fedora-specific and not upstream.
 Patch1: 0001-Use-qemu-system-i386-as-binary-instead-of-qemu.patch
-# Cleanly save session VMs on logout/shutdown (bz 872254)
+# Cleanly save session VMs on logout/shutdown (bz #872254)
 # keep: Fixed upstream, but using patches not suitable for stable
 Patch2: libvirt-dbus.patch
-# Cleanly save session VMs on logout/shutdown (bz 872254)
+# Cleanly save session VMs on logout/shutdown (bz #872254)
 # keep: Fixed upstream, but using patches not suitable for stable
 Patch3: libvirt-save-with-session.patch
-# Fix selinux denials when launching non-kvm qemu guests (bz 885837)
-# keep: missed stable release
-Patch4: 0002-Support-custom-svirt_tcg_t-context-for-TCG-based-gue.patch
 
 
 %if %{with_libvirtd}
@@ -1075,10 +1073,16 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+
+# Fix qemu -> qemu-system-i386 (bz #857026).
+# keep: This patch is Fedora-specific and not upstream.
 %patch1 -p1
+# Cleanly save session VMs on logout/shutdown (bz #872254)
+# keep: Fixed upstream, but using patches not suitable for stable
 %patch2 -p1
+# Cleanly save session VMs on logout/shutdown (bz #872254)
+# keep: Fixed upstream, but using patches not suitable for stable
 %patch3 -p1
-%patch4 -p1
 
 %build
 %if ! %{with_xen}
@@ -1954,6 +1958,13 @@ fi
 %endif
 
 %changelog
+* Mon Apr 01 2013 Cole Robinson <crobinso@redhat.com> - 0.10.2.4-1
+- Rebased to version 0.10.2.4
+- Fix 'Cannot parse sensitivity level in s0' error (bz #902103)
+- Fix updating NIC that has boot order set (bz #906446)
+- Fix virsh list for vmware ESX (bz #910702)
+- Fix libxl disk backend default (bz #912488)
+
 * Mon Jan 28 2013 Cole Robinson <crobinso@redhat.com> - 0.10.2.3-1
 - Rebased to version 0.10.2.3
 - Fix libxl driver to build against xen 4.2 (bz #870689)
