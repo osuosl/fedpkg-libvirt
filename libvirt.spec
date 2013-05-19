@@ -334,7 +334,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 0.10.2.4
+Version: 0.10.2.5
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -708,6 +708,10 @@ Requires(postun): systemd-units
 %if %{with_numad}
 Requires: numad
 %endif
+# libvirtd depends on 'messagebus' service
+Requires: dbus
+# For uid creation during pre
+Requires(pre): shadow-utils
 
 %description daemon
 Server side daemon required to manage the virtualization capabilities
@@ -1336,7 +1340,11 @@ gzip -9 ChangeLog
 %install
 rm -fr %{buildroot}
 
-%makeinstall SYSTEMD_UNIT_DIR=%{buildroot}%{_unitdir}
+# Avoid using makeinstall macro as it changes prefixes rather than setting
+# DESTDIR. Newer make_install macro would be better but it's not available
+# on RHEL 5, thus we need to expand it here.
+make install DESTDIR=%{?buildroot} SYSTEMD_UNIT_DIR=%{_unitdir}
+
 for i in domain-events/events-c dominfo domsuspend hellolibvirt openauth python xml/nwfilter systemtap
 do
   (cd examples/$i ; make clean ; rm -rf .deps .libs Makefile Makefile.in)
@@ -1434,16 +1442,21 @@ make check
 
 %if %{with_libvirtd}
 %pre daemon
-%if 0%{?fedora} >= 12 || 0%{?rhel} >= 6
-# Normally 'setup' adds this in /etc/passwd, but this is
-# here for case of upgrades from earlier Fedora/RHEL. This
-# UID/GID pair is reserved for qemu:qemu
-getent group kvm >/dev/null || groupadd -g 36 -r kvm
-getent group qemu >/dev/null || groupadd -g 107 -r qemu
-getent passwd qemu >/dev/null || \
-  useradd -r -u 107 -g qemu -G kvm -d / -s /sbin/nologin \
-    -c "qemu user" qemu
-%endif
+    %if 0%{?fedora} >= 12 || 0%{?rhel} >= 6
+# We want soft static allocation of well-known ids, as disk images
+# are commonly shared across NFS mounts by id rather than name; see
+# https://fedoraproject.org/wiki/Packaging:UsersAndGroups
+getent group kvm >/dev/null || groupadd -f -g 36 -r kvm
+getent group qemu >/dev/null || groupadd -f -g 107 -r qemu
+if ! getent passwd qemu >/dev/null; then
+  if ! getent passwd 107 >/dev/null; then
+    useradd -r -u 107 -g qemu -G kvm -d / -s /sbin/nologin -c "qemu user" qemu
+  else
+    useradd -r -g qemu -G kvm -d / -s /sbin/nologin -c "qemu user" qemu
+  fi
+fi
+exit 0
+    %endif
 
 %post daemon
 
@@ -1958,6 +1971,13 @@ fi
 %endif
 
 %changelog
+* Sun May 19 2013 Cole Robinson <crobinso@redhat.com> - 0.10.2.5-1
+- Rebased to version 0.10.2.5
+- Fix creating snapshot on lvm pool (bz #955371)
+- Properly escape audit paths (bz #922186)
+- Follow updated packaging guidelines for user alloc (bz #924501)
+- CVE-2013-1962 Open files DoS (bz #963789, bz #953107)
+
 * Mon Apr 01 2013 Cole Robinson <crobinso@redhat.com> - 0.10.2.4-1
 - Rebased to version 0.10.2.4
 - Fix 'Cannot parse sensitivity level in s0' error (bz #902103)
