@@ -2222,7 +2222,7 @@ fi
 * Sat Jul 30 2011 Dan Hor?k <dan[at]danny.cz> - 0.9.3-3
 - xenlight available only on Xen arches
 
-* Mon Jul  5 2011 Peter Robinson <pbrobinson@gmail.com> - 0.9.3-2
+* Tue Jul  5 2011 Peter Robinson <pbrobinson@gmail.com> - 0.9.3-2
 - Add ARM to NUMA platform excludes
 
 * Mon Jul  4 2011 Daniel Veillard <veillard@redhat.com> - 0.9.3-1
