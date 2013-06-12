@@ -334,7 +334,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 0.10.2.5
+Version: 0.10.2.6
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -1971,6 +1971,13 @@ fi
 %endif
 
 %changelog
+* Wed Jun 12 2013 Cole Robinson <crobinso@redhat.com> - 0.10.2.6-1
+- Rebased to version 0.10.2.6
+- Fix launching qemu with ccid database property (bz #904692)
+- Don't error if disk resize isn't multiple of 512 (bz #951495)
+- Fix racey cgroup error at VM startup (bz #965169)
+- Fix crash in nwfilter at daemon shutdown (bz #967740)
+
 * Sun May 19 2013 Cole Robinson <crobinso@redhat.com> - 0.10.2.5-1
 - Rebased to version 0.10.2.5
 - Fix creating snapshot on lvm pool (bz #955371)
