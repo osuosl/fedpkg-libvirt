@@ -273,7 +273,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 0.9.11.9
+Version: 0.9.11.10
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -282,19 +282,20 @@ Group: Development/Libraries
 %define mainturl stable_updates/
 %endif
 Source: http://libvirt.org/sources/%{?mainturl}libvirt-%{version}.tar.gz
-# Replace fedora-13->pc-0.14 to prep for qemu removal (bz 754772)
+
+# Replace fedora-13->pc-0.14 to prep for qemu removal (bz #754772)
 # keep: keeping this for the lifetime of F17, gone for newer releases
 Patch1: libvirt-qemu-replace-deprecated-fedora-13-machine.patch
-# Add usbredir spice channel (bz 821469)
+# Add usbredir spice channel (bz #821469)
 # keep: fedora feature backport that won't hit 0.9.11 maint
 Patch2: libvirt-add-usbredir-spice-channel.patch
-# Add default spice channel (bz 821474)
+# Add default spice channel (bz #821474)
 # keep: fedora feature backport that won't hit 0.9.11 maint
 Patch3: libvirt-add-default-spice-channel.patch
-# sanlock: Add param to ignore readonly/shared disks (bz 828633)
+# sanlock: Add param to ignore readonly/shared disks (bz #828633)
 # keep: 0.9.12 feature backport for vdsm, won't hit -maint
 Patch4: libvirt-sanlock-readonly-option.patch
-# Fix LXC domain startup with selinux=disabled (bz 858104)
+# Fix LXC domain startup with selinux=disabled (bz #858104)
 # keep: non upstream fix that doesn't apply to git head
 Patch5: libvirt-lxc-selinux-context-error.patch
 
@@ -764,10 +765,21 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+
+# Replace fedora-13->pc-0.14 to prep for qemu removal (bz #754772)
+# keep: keeping this for the lifetime of F17, gone for newer releases
 %patch1 -p1
+# Add usbredir spice channel (bz #821469)
+# keep: fedora feature backport that won't hit 0.9.11 maint
 %patch2 -p1
+# Add default spice channel (bz #821474)
+# keep: fedora feature backport that won't hit 0.9.11 maint
 %patch3 -p1
+# sanlock: Add param to ignore readonly/shared disks (bz #828633)
+# keep: 0.9.12 feature backport for vdsm, won't hit -maint
 %patch4 -p1
+# Fix LXC domain startup with selinux=disabled (bz #858104)
+# keep: non upstream fix that doesn't apply to git head
 %patch5 -p1
 
 %build
@@ -1500,6 +1512,12 @@ rm -f $RPM_BUILD_ROOT%{_sysconfdir}/sysctl.d/libvirtd
 %endif
 
 %changelog
+* Wed Jun 12 2013 Cole Robinson <crobinso@redhat.com> - 0.9.11.10-1
+- Rebased to version 0.9.11.10
+- Fix launching qemu with ccid database property (bz #904692)
+- Don't error if disk resize isn't multiple of 512 (bz #951495)
+- Fix build with latest kernels (bz #959531)
+
 * Mon Jan 28 2013 Cole Robinson <crobinso@redhat.com> - 0.9.11.9-1
 - Rebased to version 0.9.11.9
 - CVE-2013-0170 libvirt: use-after-free in virNetMessageFree() (bz #893450, bz
