@@ -340,7 +340,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 1.0.5.1
+Version: 1.0.5.2
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -2005,6 +2005,14 @@ fi
 %endif
 
 %changelog
+* Wed Jun 12 2013 Cole Robinson <crobinso@redhat.com> - 1.0.5.2-1
+- Rebased to version 1.0.5.2
+- Don't error if disk resize isn't multiple of 512 (bz #951495)
+- Fix racey cgroup error at VM startup (bz #965169)
+- Fix crash in nwfilter at daemon shutdown (bz #967740)
+- Fix 'tray is locked' error on media eject (bz #967914)
+- Error on invalid combo of --tunnelled and --copy-storage (bz #968043)
+
 * Sun May 19 2013 Cole Robinson <crobinso@redhat.com> - 1.0.5.1-1
 - Rebased to version 1.0.5.1
 - Follow updated packaging guidelines for user alloc (bz #924501)
