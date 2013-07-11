@@ -340,7 +340,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 1.0.5.2
+Version: 1.0.5.3
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -2005,6 +2005,12 @@ fi
 %endif
 
 %changelog
+* Thu Jul 11 2013 Cole Robinson <crobinso@redhat.com> - 1.0.5.3-1
+- Rebased to version 1.0.5.3
+- Allow /dev/tty in LXC container (bz #982317)
+- Fix cpu hot-add with latest qemu (bz #979260)
+- Fix crash in udev logging (bz #969152)
+
 * Wed Jun 12 2013 Cole Robinson <crobinso@redhat.com> - 1.0.5.2-1
 - Rebased to version 1.0.5.2
 - Don't error if disk resize isn't multiple of 512 (bz #951495)
