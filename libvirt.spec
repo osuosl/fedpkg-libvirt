@@ -340,7 +340,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 1.0.5.3
+Version: 1.0.5.4
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -2005,6 +2005,10 @@ fi
 %endif
 
 %changelog
+* Fri Jul 12 2013 Cole Robinson <crobinso@redhat.com> - 1.0.5.4-1
+- Rebased to version 1.0.5.4
+- Fix crash on migration
+
 * Thu Jul 11 2013 Cole Robinson <crobinso@redhat.com> - 1.0.5.3-1
 - Rebased to version 1.0.5.3
 - Allow /dev/tty in LXC container (bz #982317)
