@@ -340,7 +340,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 1.0.5.4
+Version: 1.0.5.5
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -2005,6 +2005,11 @@ fi
 %endif
 
 %changelog
+* Thu Aug 01 2013 Cole Robinson <crobinso@redhat.com> - 1.0.5.5-1
+- Rebased to version 1.0.5.5
+- Really fix /dev/tty inside a container (bz #982317)
+- Fix possible deadlock from getpwuid_r (bz #964358)
+
 * Fri Jul 12 2013 Cole Robinson <crobinso@redhat.com> - 1.0.5.4-1
 - Rebased to version 1.0.5.4
 - Fix crash on migration
