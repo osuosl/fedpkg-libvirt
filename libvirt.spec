@@ -334,7 +334,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 0.10.2.6
+Version: 0.10.2.7
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -1971,6 +1971,11 @@ fi
 %endif
 
 %changelog
+* Thu Aug 01 2013 Cole Robinson <crobinso@redhat.com> - 0.10.2.7-1
+- Rebased to version 0.10.2.7
+- Fix crash if udev logging enabled (bz #969152)
+- Fix possible deadlock from getpwuid_r (bz #964358)
+
 * Wed Jun 12 2013 Cole Robinson <crobinso@redhat.com> - 0.10.2.6-1
 - Rebased to version 0.10.2.6
 - Fix launching qemu with ccid database property (bz #904692)
