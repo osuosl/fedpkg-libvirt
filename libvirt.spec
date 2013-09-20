@@ -340,7 +340,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 1.0.5.5
+Version: 1.0.5.6
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -2005,6 +2005,16 @@ fi
 %endif
 
 %changelog
+* Fri Sep 20 2013 Cole Robinson <crobinso@redhat.com> - 1.0.5.6-1
+- Rebased to version 1.0.5.6
+- Fix blockjobinfo python API (bz #999077)
+- CVE-2013-4311: Insecure polkit usage (bz #1009539, bz #1005332)
+- CVE-2013-4296: Invalid free memory stats (bz #1006173, bz #1009667)
+- CVE-2013-4291: Supplementary groups handling (bz #1006509, bz #1006511)
+- CVE-2013-5651: virBitmapParse out-of-bounds (bz #1006493)
+- Fix virsh change-media with block disk type (bz #951192)
+- Fix changing VNC listen address (bz #1006697)
+
 * Thu Aug 01 2013 Cole Robinson <crobinso@redhat.com> - 1.0.5.5-1
 - Rebased to version 1.0.5.5
 - Really fix /dev/tty inside a container (bz #982317)
