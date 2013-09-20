@@ -334,7 +334,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 0.10.2.7
+Version: 0.10.2.8
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -1971,6 +1971,14 @@ fi
 %endif
 
 %changelog
+* Fri Sep 20 2013 Cole Robinson <crobinso@redhat.com> - 0.10.2.8-1
+- Rebased to version 0.10.2.8
+- CVE-2013-4311: Insecure polkit usage (bz #1009539, bz #1005332)
+- CVE-2013-4296: Invalid free memory stats (bz #1006173, bz #1009667)
+- CVE-2013-4291: Supplementary groups handling (bz #1006509, bz #1006511)
+- Fix LXC container creation if selinux disabled (bz #977114)
+- Fix virsh change-media with block disk type (bz #951192)
+
 * Thu Aug 01 2013 Cole Robinson <crobinso@redhat.com> - 0.10.2.7-1
 - Rebased to version 0.10.2.7
 - Fix crash if udev logging enabled (bz #969152)
