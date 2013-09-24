@@ -341,7 +341,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 1.0.5.6
-Release: 1%{?dist}%{?extra_release}
+Release: 2%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -351,6 +351,10 @@ URL: http://libvirt.org/
     %define mainturl stable_updates/
 %endif
 Source: http://libvirt.org/sources/%{?mainturl}libvirt-%{version}.tar.gz
+
+# Fix snapshot restore when VM has disabled usb support (bz #1011520)
+Patch0001: 0001-qemu-Fix-checking-of-ABI-stability-when-restoring-ex.patch
+Patch0002: 0002-qemu-Use-migratable-XML-definition-when-doing-extern.patch
 
 %if %{with_libvirtd}
 Requires: libvirt-daemon = %{version}-%{release}
@@ -1083,6 +1087,10 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+
+# Fix snapshot restore when VM has disabled usb support (bz #1011520)
+%patch0001 -p1
+%patch0002 -p1
 
 %build
 %if ! %{with_xen}
@@ -2005,6 +2013,9 @@ fi
 %endif
 
 %changelog
+* Tue Sep 24 2013 Cole Robinson <crobinso@redhat.com> - 1.0.5.6-2
+- Fix snapshot restore when VM has disabled usb support (bz #1011520)
+
 * Fri Sep 20 2013 Cole Robinson <crobinso@redhat.com> - 1.0.5.6-1
 - Rebased to version 1.0.5.6
 - Fix blockjobinfo python API (bz #999077)
