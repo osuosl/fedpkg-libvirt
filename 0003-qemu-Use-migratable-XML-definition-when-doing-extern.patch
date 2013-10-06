@@ -1,4 +1,4 @@
-From e3905e84a3bcd66841f3a40d63a5a98d563424ac Mon Sep 17 00:00:00 2001
+From eaf803e7f0a6ec66aef24157488696a3b9d3a890 Mon Sep 17 00:00:00 2001
 From: Peter Krempa <pkrempa@redhat.com>
 Date: Mon, 16 Sep 2013 13:40:42 +0200
 Subject: [PATCH] qemu: Use "migratable" XML definition when doing external

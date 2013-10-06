@@ -1,0 +1,105 @@
+From f6b6a016a93218cb3ed881faca9df6a27c859bcf Mon Sep 17 00:00:00 2001
+From: "Daniel P. Berrange" <berrange@redhat.com>
+Date: Thu, 3 Oct 2013 14:06:58 +0100
+Subject: [PATCH] Remove virConnectPtr arg from virNWFilterDefParse*
+
+None of the virNWFilterDefParse* methods require a virConnectPtr
+arg, so just drop it
+
+Signed-off-by: Daniel P. Berrange <berrange@redhat.com>
+---
+ src/conf/nwfilter_conf.c       | 15 ++++++---------
+ src/conf/nwfilter_conf.h       |  6 ++----
+ src/nwfilter/nwfilter_driver.c |  2 +-
+ tests/nwfilterxml2xmltest.c    |  2 +-
+ 4 files changed, 10 insertions(+), 15 deletions(-)
+
+diff --git a/src/conf/nwfilter_conf.c b/src/conf/nwfilter_conf.c
+index b61010d..5559c09 100644
+--- a/src/conf/nwfilter_conf.c
++++ b/src/conf/nwfilter_conf.c
+@@ -2651,8 +2651,7 @@ cleanup:
+ 
+ 
+ static virNWFilterDefPtr
+-virNWFilterDefParse(virConnectPtr conn ATTRIBUTE_UNUSED,
+-                    const char *xmlStr,
++virNWFilterDefParse(const char *xmlStr,
+                     const char *filename) {
+     virNWFilterDefPtr def = NULL;
+     xmlDocPtr xml;
+@@ -2667,18 +2666,16 @@ virNWFilterDefParse(virConnectPtr conn ATTRIBUTE_UNUSED,
+ 
+ 
+ virNWFilterDefPtr
+-virNWFilterDefParseString(virConnectPtr conn,
+-                          const char *xmlStr)
++virNWFilterDefParseString(const char *xmlStr)
+ {
+-    return virNWFilterDefParse(conn, xmlStr, NULL);
++    return virNWFilterDefParse(xmlStr, NULL);
+ }
+ 
+ 
+ virNWFilterDefPtr
+-virNWFilterDefParseFile(virConnectPtr conn,
+-                        const char *filename)
++virNWFilterDefParseFile(const char *filename)
+ {
+-    return virNWFilterDefParse(conn, NULL, filename);
++    return virNWFilterDefParse(NULL, filename);
+ }
+ 
+ 
+@@ -3076,7 +3073,7 @@ virNWFilterObjLoad(virConnectPtr conn,
+     virNWFilterDefPtr def;
+     virNWFilterObjPtr nwfilter;
+ 
+-    if (!(def = virNWFilterDefParseFile(conn, path))) {
++    if (!(def = virNWFilterDefParseFile(path))) {
+         return NULL;
+     }
+ 
+diff --git a/src/conf/nwfilter_conf.h b/src/conf/nwfilter_conf.h
+index 48998ec..f7d21a1 100644
+--- a/src/conf/nwfilter_conf.h
++++ b/src/conf/nwfilter_conf.h
+@@ -714,10 +714,8 @@ int virNWFilterLoadAllConfigs(virConnectPtr conn,
+ char *virNWFilterConfigFile(const char *dir,
+                             const char *name);
+ 
+-virNWFilterDefPtr virNWFilterDefParseString(virConnectPtr conn,
+-                                            const char *xml);
+-virNWFilterDefPtr virNWFilterDefParseFile(virConnectPtr conn,
+-                                          const char *filename);
++virNWFilterDefPtr virNWFilterDefParseString(const char *xml);
++virNWFilterDefPtr virNWFilterDefParseFile(const char *filename);
+ 
+ void virNWFilterObjLock(virNWFilterObjPtr obj);
+ void virNWFilterObjUnlock(virNWFilterObjPtr obj);
+diff --git a/src/nwfilter/nwfilter_driver.c b/src/nwfilter/nwfilter_driver.c
+index 8f73d3b..db7d9cb 100644
+--- a/src/nwfilter/nwfilter_driver.c
++++ b/src/nwfilter/nwfilter_driver.c
+@@ -534,7 +534,7 @@ nwfilterDefineXML(virConnectPtr conn,
+     nwfilterDriverLock(driver);
+     virNWFilterCallbackDriversLock();
+ 
+-    if (!(def = virNWFilterDefParseString(conn, xml)))
++    if (!(def = virNWFilterDefParseString(xml)))
+         goto cleanup;
+ 
+     if (!(nwfilter = virNWFilterObjAssignDef(conn, &driver->nwfilters, def)))
+diff --git a/tests/nwfilterxml2xmltest.c b/tests/nwfilterxml2xmltest.c
+index a215bf8..44088b2 100644
+--- a/tests/nwfilterxml2xmltest.c
++++ b/tests/nwfilterxml2xmltest.c
+@@ -33,7 +33,7 @@ testCompareXMLToXMLFiles(const char *inxml, const char *outxml,
+ 
+     virResetLastError();
+ 
+-    if (!(dev = virNWFilterDefParseString(NULL, inXmlData)))
++    if (!(dev = virNWFilterDefParseString(inXmlData)))
+         goto fail;
+ 
+     if (!!virGetLastError() != expect_error)

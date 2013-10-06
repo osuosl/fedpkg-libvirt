@@ -1,4 +1,4 @@
-From 973fda18d4f5be790b912dde5c8f13a5812388c3 Mon Sep 17 00:00:00 2001
+From 51a1506b2944e5a2c905d0acc3fa68f829c3bb95 Mon Sep 17 00:00:00 2001
 From: Peter Krempa <pkrempa@redhat.com>
 Date: Mon, 16 Sep 2013 13:37:34 +0200
 Subject: [PATCH] qemu: Fix checking of ABI stability when restoring external
