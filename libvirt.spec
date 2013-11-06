@@ -340,8 +340,8 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 1.0.5.6
-Release: 3%{?dist}%{?extra_release}
+Version: 1.0.5.7
+Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -351,19 +351,6 @@ URL: http://libvirt.org/
     %define mainturl stable_updates/
 %endif
 Source: http://libvirt.org/sources/%{?mainturl}libvirt-%{version}.tar.gz
-
-# Fix virsh vol-resize (bz #1014874)
-Patch0001: 0001-virsh-Fix-regression-of-vol-resize.patch
-# Fix snapshot restore when VM has disabled usb support (bz #1011520)
-Patch0002: 0002-qemu-Fix-checking-of-ABI-stability-when-restoring-ex.patch
-Patch0003: 0003-qemu-Use-migratable-XML-definition-when-doing-extern.patch
-# Fix nwfilter crash during firewalld install (bz #1014933)
-Patch0004: 0004-Remove-virConnectPtr-arg-from-virNWFilterDefParse.patch
-Patch0005: 0005-Don-t-pass-virConnectPtr-in-nwfilter-struct-domUpdat.patch
-Patch0006: 0006-Remove-use-of-virConnectPtr-from-all-remaining-nwfil.patch
-# Allow QoS change with update-device (bz #1014200)
-Patch0007: 0007-qemu_hotplug-Allow-QoS-update-in-qemuDomainChangeNet.patch
-Patch0008: 0008-virNetDevBandwidthEqual-Make-it-more-robust.patch
 
 %if %{with_libvirtd}
 Requires: libvirt-daemon = %{version}-%{release}
@@ -487,8 +474,7 @@ BuildRequires: cyrus-sasl-devel
 %endif
 %if %{with_polkit}
     %if 0%{?fedora} >= 12 || 0%{?rhel} >= 6
-# Only need the binary, not -devel
-BuildRequires: polkit >= 0.93
+BuildRequires: polkit-devel >= 0.93
     %else
 BuildRequires: PolicyKit-devel >= 0.6
     %endif
@@ -1096,19 +1082,6 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
-
-# Fix virsh vol-resize (bz #1014874)
-%patch0001 -p1
-# Fix snapshot restore when VM has disabled usb support (bz #1011520)
-%patch0002 -p1
-%patch0003 -p1
-# Fix nwfilter crash during firewalld install (bz #1014933)
-%patch0004 -p1
-%patch0005 -p1
-%patch0006 -p1
-# Allow QoS change with update-device (bz #1014200)
-%patch0007 -p1
-%patch0008 -p1
 
 %build
 %if ! %{with_xen}
@@ -2031,6 +2004,10 @@ fi
 %endif
 
 %changelog
+* Wed Nov 06 2013 Cole Robinson <crobinso@redhat.com> - 1.0.5.7-1
+- Rebased to version 1.0.5.7
+- Fix memory limit to not incorrectly invoke OOM killer on qemu (bz #966939)
+
 * Sun Oct 06 2013 Cole Robinson <crobinso@redhat.com> - 1.0.5.6-3
 - Fix virsh vol-resize (bz #1014874)
 - Fix nwfilter crash during firewalld install (bz #1014933)
