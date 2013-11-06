@@ -366,8 +366,8 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 1.1.3
-Release: 2%{?dist}%{?extra_release}
+Version: 1.1.3.1
+Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -377,16 +377,6 @@ URL: http://libvirt.org/
     %define mainturl stable_updates/
 %endif
 Source: http://libvirt.org/sources/%{?mainturl}libvirt-%{version}.tar.gz
-
-# Allow QoS change with update-device (bz #1014200)
-Patch0001: 0001-qemu_hotplug-Allow-QoS-update-in-qemuDomainChangeNet.patch
-Patch0002: 0002-virNetDevBandwidthEqual-Make-it-more-robust.patch
-# Fix nwfilter crash during firewalld install (bz #1014762)
-Patch0003: 0003-Remove-virConnectPtr-arg-from-virNWFilterDefParse.patch
-Patch0004: 0004-Don-t-pass-virConnectPtr-in-nwfilter-struct-domUpdat.patch
-Patch0005: 0005-Remove-use-of-virConnectPtr-from-all-remaining-nwfil.patch
-# Fix crash with nographics (bz #1014088)
-Patch0006: 0006-qemu-cgroup-Fix-crash-if-starting-nographics-guest.patch
 
 %if %{with_libvirtd}
 Requires: libvirt-daemon = %{version}-%{release}
@@ -667,81 +657,12 @@ Requires: avahi
 Requires: avahi-libs
         %endif
     %endif
-    %if %{with_network}
-Requires: dnsmasq >= 2.41
-Requires: radvd
-    %endif
-    %if %{with_network} || %{with_nwfilter}
-Requires: iptables
-Requires: iptables-ipv6
-    %endif
-    %if %{with_nwfilter}
-Requires: ebtables
-    %endif
-    %if %{with_netcf} && (0%{?fedora} >= 18 || 0%{?rhel} >= 7)
-Requires: netcf-libs >= 0.2.2
-    %endif
-# needed for device enumeration
-    %if %{with_hal}
-Requires: hal
-    %endif
-    %if %{with_udev}
-        %if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
-Requires: systemd >= 185
-        %else
-Requires: udev >= 145
-        %endif
-    %endif
     %if %{with_polkit}
         %if 0%{?fedora} >= 12 || 0%{?rhel} >=6
 Requires: polkit >= 0.93
         %else
 Requires: PolicyKit >= 0.6
         %endif
-    %endif
-    %if %{with_storage_fs}
-Requires: nfs-utils
-# For mkfs
-Requires: util-linux
-# For glusterfs
-        %if 0%{?fedora} >= 11
-Requires: glusterfs-client >= 2.0.1
-        %endif
-    %endif
-    %if %{with_qemu}
-# From QEMU RPMs
-Requires: /usr/bin/qemu-img
-# For image compression
-Requires: gzip
-Requires: bzip2
-Requires: lzop
-Requires: xz
-    %else
-        %if %{with_xen}
-# From Xen RPMs
-Requires: /usr/sbin/qcow-create
-        %endif
-    %endif
-    %if %{with_storage_lvm}
-# For LVM drivers
-Requires: lvm2
-    %endif
-    %if %{with_storage_iscsi}
-# For ISCSI driver
-Requires: iscsi-initiator-utils
-    %endif
-    %if %{with_storage_disk}
-# For disk driver
-Requires: parted
-Requires: device-mapper
-    %endif
-    %if %{with_storage_mpath}
-# For multipath support
-Requires: device-mapper
-    %endif
-    %if %{with_storage_sheepdog}
-# For Sheepdog support
-Requires: sheepdog
     %endif
     %if %{with_cgconfig}
 Requires: libcgroup
@@ -798,6 +719,10 @@ Network filter configuration files for cleaning guest traffic
 Summary: Network driver plugin for the libvirtd daemon
 Group: Development/Libraries
 Requires: libvirt-daemon = %{version}-%{release}
+Requires: dnsmasq >= 2.41
+Requires: radvd
+Requires: iptables
+Requires: iptables-ipv6
 
 %description daemon-driver-network
 The network driver plugin for the libvirtd daemon, providing
@@ -811,6 +736,9 @@ bridge capabilities.
 Summary: Nwfilter driver plugin for the libvirtd daemon
 Group: Development/Libraries
 Requires: libvirt-daemon = %{version}-%{release}
+Requires: iptables
+Requires: iptables-ipv6
+Requires: ebtables
 
 %description daemon-driver-nwfilter
 The nwfilter driver plugin for the libvirtd daemon, providing
@@ -824,6 +752,17 @@ iptables and ip6tables capabilities
 Summary: Nodedev driver plugin for the libvirtd daemon
 Group: Development/Libraries
 Requires: libvirt-daemon = %{version}-%{release}
+# needed for device enumeration
+            %if %{with_hal}
+Requires: hal
+            %endif
+            %if %{with_udev}
+                %if 0%{?fedora} >= 18 || 0%{?rhel} >= 7
+Requires: systemd >= 185
+                %else
+Requires: udev >= 145
+                %endif
+            %endif
 
 %description daemon-driver-nodedev
 The nodedev driver plugin for the libvirtd daemon, providing
@@ -837,6 +776,9 @@ capabilities.
 Summary: Interface driver plugin for the libvirtd daemon
 Group: Development/Libraries
 Requires: libvirt-daemon = %{version}-%{release}
+            %if %{with_netcf} && (0%{?fedora} >= 18 || 0%{?rhel} >= 7)
+Requires: netcf-libs >= 0.2.2
+            %endif
 
 %description daemon-driver-interface
 The interface driver plugin for the libvirtd daemon, providing
@@ -860,6 +802,45 @@ an implementation of the secret key APIs.
 Summary: Storage driver plugin for the libvirtd daemon
 Group: Development/Libraries
 Requires: libvirt-daemon = %{version}-%{release}
+            %if %{with_storage_fs}
+Requires: nfs-utils
+# For mkfs
+Requires: util-linux
+# For glusterfs
+                %if 0%{?fedora} >= 11
+Requires: glusterfs-client >= 2.0.1
+                %endif
+            %endif
+            %if %{with_storage_lvm}
+# For LVM drivers
+Requires: lvm2
+            %endif
+            %if %{with_storage_iscsi}
+# For ISCSI driver
+Requires: iscsi-initiator-utils
+            %endif
+            %if %{with_storage_disk}
+# For disk driver
+Requires: parted
+Requires: device-mapper
+            %endif
+            %if %{with_storage_mpath}
+# For multipath support
+Requires: device-mapper
+            %endif
+            %if %{with_storage_sheepdog}
+# For Sheepdog support
+Requires: sheepdog
+            %endif
+            %if %{with_qemu}
+# From QEMU RPMs
+Requires: /usr/bin/qemu-img
+            %else
+                %if %{with_xen}
+# From Xen RPMs
+Requires: /usr/sbin/qcow-create
+                %endif
+            %endif
 
 %description daemon-driver-storage
 The storage driver plugin for the libvirtd daemon, providing
@@ -875,6 +856,12 @@ Group: Development/Libraries
 Requires: libvirt-daemon = %{version}-%{release}
 # There really is a hard cross-driver dependency here
 Requires: libvirt-daemon-driver-network = %{version}-%{release}
+Requires: /usr/bin/qemu-img
+# For image compression
+Requires: gzip
+Requires: bzip2
+Requires: lzop
+Requires: xz
 
 %description daemon-driver-qemu
 The qemu driver plugin for the libvirtd daemon, providing
@@ -1117,6 +1104,18 @@ Requires: cyrus-sasl-md5
 Shared libraries and client binaries needed to access to the
 virtualization capabilities of recent versions of Linux (and other OSes).
 
+%if %{with_lxc}
+%package login-shell
+Summary: Login shell for connecting users to an LXC container
+Group: Development/Libraries
+Requires: %{name}-client = %{version}-%{release}
+
+%description login-shell
+Provides the set-uid virt-login-shell binary that is used to
+connect a user to an LXC container when they login, by switching
+namespaces.
+%endif
+
 %package devel
 Summary: Libraries, includes, etc. to compile with the libvirt library
 Group: Development/Libraries
@@ -1161,16 +1160,6 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
-
-# Allow QoS change with update-device (bz #1014200)
-%patch0001 -p1
-%patch0002 -p1
-# Fix nwfilter crash during firewalld install (bz #1014762)
-%patch0003 -p1
-%patch0004 -p1
-%patch0005 -p1
-# Fix crash with nographics (bz #1014088)
-%patch0006 -p1
 
 %build
 %if ! %{with_xen}
@@ -2035,23 +2024,14 @@ fi
 %doc COPYING COPYING.LESSER
 
 %config(noreplace) %{_sysconfdir}/libvirt/libvirt.conf
-%if %{with_lxc}
-%config(noreplace) %{_sysconfdir}/libvirt/virt-login-shell.conf
-%endif
 %{_mandir}/man1/virsh.1*
 %{_mandir}/man1/virt-xml-validate.1*
 %{_mandir}/man1/virt-pki-validate.1*
 %{_mandir}/man1/virt-host-validate.1*
-%if %{with_lxc}
-%{_mandir}/man1/virt-login-shell.1*
-%endif
 %{_bindir}/virsh
 %{_bindir}/virt-xml-validate
 %{_bindir}/virt-pki-validate
 %{_bindir}/virt-host-validate
-%if %{with_lxc}
-%attr(4755, root, root) %{_bindir}/virt-login-shell
-%endif
 %{_libdir}/lib*.so.*
 
 %if %{with_dtrace}
@@ -2095,6 +2075,13 @@ fi
 %config(noreplace) %{_sysconfdir}/sasl2/libvirt.conf
 %endif
 
+%if %{with_lxc}
+%files login-shell
+%attr(4755, root, root) %{_bindir}/virt-login-shell
+%config(noreplace) %{_sysconfdir}/libvirt/virt-login-shell.conf
+%{_mandir}/man1/virt-login-shell.1*
+%endif
+
 %files devel
 %defattr(-, root, root)
 
@@ -2131,6 +2118,14 @@ fi
 %endif
 
 %changelog
+* Wed Nov 06 2013 Cole Robinson <crobinso@redhat.com> - 1.1.3.1-1
+- Rebased to version 1.1.3.1
+- CVE-2013-4400: virt-login-shell arbitrary file overwrites vulnerability (bz
+  #1015228, bz #1025685)
+- Fix possible domain disappearance on libvirtd crash (bz #1015246)
+- Fix LXC container startup failure (bz #1014847)
+- Slim down libvirt LXC dependencies (bz #1012198)
+
 * Sun Oct 06 2013 Cole Robinson <crobinso@redhat.com> - 1.1.3-2
 - Allow QoS change with update-device (bz #1014200)
 - Fix nwfilter crash during firewalld install (bz #1014762)
