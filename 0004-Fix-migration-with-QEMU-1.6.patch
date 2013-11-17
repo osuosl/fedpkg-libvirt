@@ -1,0 +1,65 @@
+From 1587f15f6de9c7ee98016ce5b5d74662640740bb Mon Sep 17 00:00:00 2001
+Message-Id: <1587f15f6de9c7ee98016ce5b5d74662640740bb.1384729580.git.crobinso@redhat.com>
+In-Reply-To: <894b3a9e2fb467373f5311f4d6716cdae870a031.1384729580.git.crobinso@redhat.com>
+References: <894b3a9e2fb467373f5311f4d6716cdae870a031.1384729580.git.crobinso@redhat.com>
+From: Michael Avdienko <whitearchey@gmail.com>
+Date: Fri, 15 Nov 2013 20:47:43 +0900
+Subject: [PATCH 4/4] Fix migration with QEMU 1.6
+
+QEMU 1.6.0 introduced new migration status: setup
+Libvirt does not expect such string in QMP and refuses to migrate with error
+"unexpected migration status in setup"
+
+This patch fixes it.
+
+Signed-off-by: Jiri Denemark <jdenemar@redhat.com>
+(cherry picked from commit d35ae4143d11f45856ae002fcd419da0eb9bba9f)
+---
+ src/qemu/qemu_migration.c | 4 ++++
+ src/qemu/qemu_monitor.c   | 2 +-
+ src/qemu/qemu_monitor.h   | 1 +
+ 3 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/qemu/qemu_migration.c b/src/qemu/qemu_migration.c
+index 04313e7..c0b17c3 100644
+--- a/src/qemu/qemu_migration.c
++++ b/src/qemu/qemu_migration.c
+@@ -1650,6 +1650,10 @@ qemuMigrationUpdateJobStatus(virQEMUDriverPtr driver,
+                        _("%s: %s"), job, _("is not active"));
+         break;
+ 
++    case QEMU_MONITOR_MIGRATION_STATUS_SETUP:
++        ret = 0;
++        break;
++
+     case QEMU_MONITOR_MIGRATION_STATUS_ACTIVE:
+         priv->job.info.fileTotal = priv->job.status.disk_total;
+         priv->job.info.fileRemaining = priv->job.status.disk_remaining;
+diff --git a/src/qemu/qemu_monitor.c b/src/qemu/qemu_monitor.c
+index a601ee0..7e26377 100644
+--- a/src/qemu/qemu_monitor.c
++++ b/src/qemu/qemu_monitor.c
+@@ -114,7 +114,7 @@ VIR_ONCE_GLOBAL_INIT(qemuMonitor)
+ 
+ VIR_ENUM_IMPL(qemuMonitorMigrationStatus,
+               QEMU_MONITOR_MIGRATION_STATUS_LAST,
+-              "inactive", "active", "completed", "failed", "cancelled")
++              "inactive", "active", "completed", "failed", "cancelled", "setup")
+ 
+ VIR_ENUM_IMPL(qemuMonitorMigrationCaps,
+               QEMU_MONITOR_MIGRATION_CAPS_LAST,
+diff --git a/src/qemu/qemu_monitor.h b/src/qemu/qemu_monitor.h
+index 06ba7e8..8ec721b 100644
+--- a/src/qemu/qemu_monitor.h
++++ b/src/qemu/qemu_monitor.h
+@@ -396,6 +396,7 @@ enum {
+     QEMU_MONITOR_MIGRATION_STATUS_COMPLETED,
+     QEMU_MONITOR_MIGRATION_STATUS_ERROR,
+     QEMU_MONITOR_MIGRATION_STATUS_CANCELLED,
++    QEMU_MONITOR_MIGRATION_STATUS_SETUP,
+ 
+     QEMU_MONITOR_MIGRATION_STATUS_LAST
+ };
+-- 
+1.8.4.2
+
