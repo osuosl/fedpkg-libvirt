@@ -341,7 +341,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 1.0.5.7
-Release: 1%{?dist}%{?extra_release}
+Release: 2%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -351,6 +351,11 @@ URL: http://libvirt.org/
     %define mainturl stable_updates/
 %endif
 Source: http://libvirt.org/sources/%{?mainturl}libvirt-%{version}.tar.gz
+
+# Fix attaching ISO from cifs filesystem (bz #1012085)
+Patch0001: 0001-util-recognize-SMB-CIFS-filesystems-as-shared.patch
+# Fix crash with libxl driver and vcpu affinity (bz #1013045)
+Patch0002: 0002-libxl-fix-dubious-cpumask-handling-in-libxlDomainSet.patch
 
 %if %{with_libvirtd}
 Requires: libvirt-daemon = %{version}-%{release}
@@ -1083,6 +1088,11 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+
+# Fix attaching ISO from cifs filesystem (bz #1012085)
+%patch0001 -p1
+# Fix crash with libxl driver and vcpu affinity (bz #1013045)
+%patch0002 -p1
 
 %build
 %if ! %{with_xen}
@@ -2005,6 +2015,10 @@ fi
 %endif
 
 %changelog
+* Sun Nov 17 2013 Cole Robinson <crobinso@redhat.com> - 1.0.5.7-2
+- Fix attaching ISO from cifs filesystem (bz #1012085)
+- Fix crash with libxl driver and vcpu affinity (bz #1013045)
+
 * Wed Nov 06 2013 Cole Robinson <crobinso@redhat.com> - 1.0.5.7-1
 - Rebased to version 1.0.5.7
 - Fix memory limit to not incorrectly invoke OOM killer on qemu (bz #966939)
