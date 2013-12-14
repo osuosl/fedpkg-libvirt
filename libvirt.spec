@@ -366,8 +366,8 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 1.1.3.1
-Release: 2%{?dist}%{?extra_release}
+Version: 1.1.3.2
+Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -377,15 +377,6 @@ URL: http://libvirt.org/
     %define mainturl stable_updates/
 %endif
 Source: http://libvirt.org/sources/%{?mainturl}libvirt-%{version}.tar.gz
-
-# Fix attaching ISO from cifs filesystem (bz #1012085)
-Patch0002: 0002-util-recognize-SMB-CIFS-filesystems-as-shared.patch
-# Fix crash with libxl driver and vcpu affinity (bz #1013045)
-Patch0003: 0003-libxl-fix-dubious-cpumask-handling-in-libxlDomainSet.patch
-# Fix managed save 'unexpected migration status' failure (bz #1015636)
-Patch0004: 0004-Fix-migration-with-QEMU-1.6.patch
-# Fix qemu deprecation warning in logs with tick options (bz #978719)
-Patch0005: 0005-qemu-don-t-use-deprecated-no-kvm-pit-reinjection.patch
 
 %if %{with_libvirtd}
 Requires: libvirt-daemon = %{version}-%{release}
@@ -1169,15 +1160,6 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
-
-# Fix attaching ISO from cifs filesystem (bz #1012085)
-%patch0002 -p1
-# Fix crash with libxl driver and vcpu affinity (bz #1013045)
-%patch0003 -p1
-# Fix managed save 'unexpected migration status' failure (bz #1015636)
-%patch0004 -p1
-# Fix qemu deprecation warning in logs with tick options (bz #978719)
-%patch0005 -p1
 
 %build
 %if ! %{with_xen}
@@ -2136,6 +2118,15 @@ fi
 %endif
 
 %changelog
+* Sat Dec 14 2013 Cole Robinson <crobinso@redhat.com> - 1.1.3.2-1
+- Rebased to version 1.1.3.2
+- Fix occasional libvirt-guests.service startup failure (bz #906009)
+- Fix hotplugging USB device to qemu VM (bz #1016511)
+- Fix return code of baselineCPU python API (bz #1033039)
+- Don't reload libvirt-guests when libvirt-client is updated (bz #962225)
+- Fix infinite loop in libvirt_lxc (bz #1005570)
+- Fix vdsm-tool segfault during vdsm startup (bz #1034312)
+
 * Sun Nov 17 2013 Cole Robinson <crobinso@redhat.com> - 1.1.3.1-2
 - Fix attaching ISO from cifs filesystem (bz #1012085)
 - Fix crash with libxl driver and vcpu affinity (bz #1013045)
