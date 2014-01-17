@@ -340,7 +340,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 1.0.5.8
+Version: 1.0.5.9
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -2005,6 +2005,15 @@ fi
 %endif
 
 %changelog
+* Thu Jan 16 2014 Cole Robinson <crobinso@redhat.com> - 1.0.5.9-1
+- Rebased to version 1.0.5.9
+- Fix crash in virDBusAddWatch (bz #885445)
+- Cleanup migration ports when migration is cancelled (bz #1018530)
+- CVE-2013-6458 libvirt: qemu: job usage issue in several APIs leading to
+  libvirtd crash (bz #1054206, bz #1048631)
+- CVE-2013-6436 libvirt: crash in lxcDomainGetMemoryParameters (bz #1049136,
+  bz #1042252)
+
 * Sat Dec 14 2013 Cole Robinson <crobinso@redhat.com> - 1.0.5.8-1
 - Rebased to version 1.0.5.8
 - Fix occasional libvirt-guests.service startup failure
