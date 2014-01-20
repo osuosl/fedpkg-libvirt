@@ -367,7 +367,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 1.1.3.3
-Release: 1%{?dist}%{?extra_release}
+Release: 2%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -377,6 +377,9 @@ URL: http://libvirt.org/
     %define mainturl stable_updates/
 %endif
 Source: http://libvirt.org/sources/%{?mainturl}libvirt-%{version}.tar.gz
+
+# Increase default qemu monitor timeout from 3 to 30 seconds (upstream).
+Patch0001: 0001-qemu-Change-the-default-unix-monitor-timeout.patch
 
 %if %{with_libvirtd}
 Requires: libvirt-daemon = %{version}-%{release}
@@ -1160,6 +1163,8 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+
+%patch0001 -p1
 
 %build
 %if ! %{with_xen}
@@ -2118,6 +2123,10 @@ fi
 %endif
 
 %changelog
+* Mon Jan 20 2014 Richard W.M. Jones <rjones@redhat.com> - 1.1.3.3-2
+- Backport increase default qemu monitor timeout from 3 to 30
+  seconds (bz #987088)
+
 * Thu Jan 16 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.3-1
 - Rebased to version 1.1.3.3
 - Fix crash in virDBusAddWatch (bz #885445)
