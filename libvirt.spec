@@ -367,7 +367,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 1.1.3.3
-Release: 2%{?dist}%{?extra_release}
+Release: 3%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -2123,6 +2123,9 @@ fi
 %endif
 
 %changelog
+* Mon Jan 27 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.3-3
+- Rebuild for openwsman soname bump
+
 * Mon Jan 20 2014 Richard W.M. Jones <rjones@redhat.com> - 1.1.3.3-2
 - Backport increase default qemu monitor timeout from 3 to 30
   seconds (bz #987088)
