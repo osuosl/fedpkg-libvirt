@@ -1,0 +1,88 @@
+From d8d075e452325bd1e5392a1395c928a57f1dbc40 Mon Sep 17 00:00:00 2001
+Message-Id: <d8d075e452325bd1e5392a1395c928a57f1dbc40.1391110483.git.crobinso@redhat.com>
+In-Reply-To: <844476f1f21fc3ea4d13aa3ea01ac56a155432a8.1391110483.git.crobinso@redhat.com>
+References: <844476f1f21fc3ea4d13aa3ea01ac56a155432a8.1391110483.git.crobinso@redhat.com>
+From: Jiri Denemark <jdenemar@redhat.com>
+Date: Mon, 27 Jan 2014 20:41:43 +0100
+Subject: [PATCH 4/5] cpu: Try to use source CPU model in virConnectBaselineCPU
+
+https://bugzilla.redhat.com/show_bug.cgi?id=1049391
+
+When all source CPU XMLs contain just a single CPU model (with a
+possibly varying set of additional feature elements),
+virConnectBaselineCPU will try to use this CPU model in the computed
+guest CPU. Thus, when used on just a single CPU (useful with
+VIR_CONNECT_BASELINE_CPU_EXPAND_FEATURES), the result will not use a
+different CPU model.
+
+If the computed CPU uses the source model, set fallback mode to 'forbid'
+to make sure the guest CPU will always be as close as possible to the
+source CPUs.
+
+(cherry picked from commit 580ddf0d34ad61b26357b94783ff622d0e73cb2b)
+---
+ src/cpu/cpu_x86.c                             | 17 ++++++++++++++++-
+ tests/cputestdata/x86-baseline-3-expanded.xml |  2 +-
+ 2 files changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/src/cpu/cpu_x86.c b/src/cpu/cpu_x86.c
+index 18e39be..0b82bf2 100644
+--- a/src/cpu/cpu_x86.c
++++ b/src/cpu/cpu_x86.c
+@@ -1735,6 +1735,8 @@ x86Baseline(virCPUDefPtr *cpus,
+     const struct x86_vendor *vendor = NULL;
+     struct x86_model *model = NULL;
+     bool outputVendor = true;
++    const char *modelName;
++    bool matchingNames = true;
+ 
+     if (!(map = x86LoadMap()))
+         goto error;
+@@ -1757,9 +1759,19 @@ x86Baseline(virCPUDefPtr *cpus,
+         goto error;
+     }
+ 
++    modelName = cpus[0]->model;
+     for (i = 1; i < ncpus; i++) {
+         const char *vn = NULL;
+ 
++        if (matchingNames && cpus[i]->model) {
++            if (!modelName) {
++                modelName = cpus[i]->model;
++            } else if (STRNEQ(modelName, cpus[i]->model)) {
++                modelName = NULL;
++                matchingNames = false;
++            }
++        }
++
+         if (!(model = x86ModelFromCPU(cpus[i], map, VIR_CPU_FEATURE_REQUIRE)))
+             goto error;
+ 
+@@ -1807,9 +1819,12 @@ x86Baseline(virCPUDefPtr *cpus,
+     if (vendor && x86DataAddCpuid(base_model->data, &vendor->cpuid) < 0)
+         goto error;
+ 
+-    if (x86Decode(cpu, base_model->data, models, nmodels, NULL, flags) < 0)
++    if (x86Decode(cpu, base_model->data, models, nmodels, modelName, flags) < 0)
+         goto error;
+ 
++    if (STREQ_NULLABLE(cpu->model, modelName))
++        cpu->fallback = VIR_CPU_FALLBACK_FORBID;
++
+     if (!outputVendor)
+         VIR_FREE(cpu->vendor);
+ 
+diff --git a/tests/cputestdata/x86-baseline-3-expanded.xml b/tests/cputestdata/x86-baseline-3-expanded.xml
+index d196112..a7e57be 100644
+--- a/tests/cputestdata/x86-baseline-3-expanded.xml
++++ b/tests/cputestdata/x86-baseline-3-expanded.xml
+@@ -1,5 +1,5 @@
+ <cpu mode='custom' match='exact'>
+-  <model fallback='allow'>Westmere</model>
++  <model fallback='forbid'>Westmere</model>
+   <feature policy='require' name='lahf_lm'/>
+   <feature policy='require' name='lm'/>
+   <feature policy='require' name='nx'/>
+-- 
+1.8.5.3
+

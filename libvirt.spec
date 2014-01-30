@@ -367,7 +367,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 1.1.3.3
-Release: 3%{?dist}%{?extra_release}
+Release: 4%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -380,6 +380,11 @@ Source: http://libvirt.org/sources/%{?mainturl}libvirt-%{version}.tar.gz
 
 # Increase default qemu monitor timeout from 3 to 30 seconds (upstream).
 Patch0001: 0001-qemu-Change-the-default-unix-monitor-timeout.patch
+# Fix baselineCPU EXPAND_FEATURES (bz #1049391)
+Patch0002: 0002-tests-Better-support-for-VIR_CONNECT_BASELINE_CPU_EX.patch
+Patch0003: 0003-cpu-Fix-VIR_CONNECT_BASELINE_CPU_EXPAND_FEATURES.patch
+Patch0004: 0004-cpu-Try-to-use-source-CPU-model-in-virConnectBaselin.patch
+Patch0005: 0005-tests-Add-more-tests-for-virConnectBaselineCPU.patch
 
 %if %{with_libvirtd}
 Requires: libvirt-daemon = %{version}-%{release}
@@ -1165,6 +1170,11 @@ of recent versions of Linux (and other OSes).
 %setup -q
 
 %patch0001 -p1
+# Fix baselineCPU EXPAND_FEATURES (bz #1049391)
+%patch0002 -p1
+%patch0003 -p1
+%patch0004 -p1
+%patch0005 -p1
 
 %build
 %if ! %{with_xen}
@@ -2123,6 +2133,9 @@ fi
 %endif
 
 %changelog
+* Thu Jan 30 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.3-4
+- Fix baselineCPU EXPAND_FEATURES (bz #1049391)
+
 * Mon Jan 27 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.3-3
 - Rebuild for openwsman soname bump
 
