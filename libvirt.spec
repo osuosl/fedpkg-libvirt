@@ -367,7 +367,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 1.1.3.3
-Release: 4%{?dist}%{?extra_release}
+Release: 5%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -2133,6 +2133,9 @@ fi
 %endif
 
 %changelog
+* Sat Feb 01 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.3-5
+- Rebuild again for openwsman soname bump
+
 * Thu Jan 30 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.3-4
 - Fix baselineCPU EXPAND_FEATURES (bz #1049391)
 
