@@ -366,8 +366,8 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 1.1.3.3
-Release: 5%{?dist}%{?extra_release}
+Version: 1.1.3.4
+Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -377,14 +377,6 @@ URL: http://libvirt.org/
     %define mainturl stable_updates/
 %endif
 Source: http://libvirt.org/sources/%{?mainturl}libvirt-%{version}.tar.gz
-
-# Increase default qemu monitor timeout from 3 to 30 seconds (upstream).
-Patch0001: 0001-qemu-Change-the-default-unix-monitor-timeout.patch
-# Fix baselineCPU EXPAND_FEATURES (bz #1049391)
-Patch0002: 0002-tests-Better-support-for-VIR_CONNECT_BASELINE_CPU_EX.patch
-Patch0003: 0003-cpu-Fix-VIR_CONNECT_BASELINE_CPU_EXPAND_FEATURES.patch
-Patch0004: 0004-cpu-Try-to-use-source-CPU-model-in-virConnectBaselin.patch
-Patch0005: 0005-tests-Add-more-tests-for-virConnectBaselineCPU.patch
 
 %if %{with_libvirtd}
 Requires: libvirt-daemon = %{version}-%{release}
@@ -1168,13 +1160,6 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
-
-%patch0001 -p1
-# Fix baselineCPU EXPAND_FEATURES (bz #1049391)
-%patch0002 -p1
-%patch0003 -p1
-%patch0004 -p1
-%patch0005 -p1
 
 %build
 %if ! %{with_xen}
@@ -2133,6 +2118,12 @@ fi
 %endif
 
 %changelog
+* Tue Feb 18 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.4-1
+- Rebased to version 1.1.3.4
+- Fix domain events when ACLs are used (bz #1058839)
+- CVE-2013-6456: unsafe usage of paths under /proc//root (bz #1048628, bz
+  #1048627)
+
 * Sat Feb 01 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.3-5
 - Rebuild again for openwsman soname bump
 
