@@ -367,7 +367,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 1.1.3.4
-Release: 1%{?dist}%{?extra_release}
+Release: 2%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -377,6 +377,12 @@ URL: http://libvirt.org/
     %define mainturl stable_updates/
 %endif
 Source: http://libvirt.org/sources/%{?mainturl}libvirt-%{version}.tar.gz
+
+# Fix libvirt-guests.service on host boot (bz #1031696)
+Patch0001: 0001-Add-Documentation-fields-to-systemd-service-files.patch
+Patch0002: 0002-virSystemdCreateMachine-Set-dependencies-for-slices.patch
+Patch0003: 0003-libvirt-guests-Wait-for-libvirtd-to-initialize.patch
+Patch0004: 0004-virNetServerRun-Notify-systemd-that-we-re-accepting-.patch
 
 %if %{with_libvirtd}
 Requires: libvirt-daemon = %{version}-%{release}
@@ -1160,6 +1166,12 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+
+# Fix libvirt-guests.service on host boot (bz #1031696)
+%patch0001 -p1
+%patch0002 -p1
+%patch0003 -p1
+%patch0004 -p1
 
 %build
 %if ! %{with_xen}
@@ -2118,6 +2130,9 @@ fi
 %endif
 
 %changelog
+* Wed Mar 05 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.4-2
+- Fix libvirt-guests.service on host boot (bz #1031696)
+
 * Tue Feb 18 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.4-1
 - Rebased to version 1.1.3.4
 - Fix domain events when ACLs are used (bz #1058839)

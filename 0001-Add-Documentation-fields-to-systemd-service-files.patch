@@ -1,0 +1,54 @@
+From f599cc7aa26bc0218e8cd0311d7307931763345a Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Guido=20G=C3=BCnther?= <agx@sigxcpu.org>
+Date: Wed, 8 Jan 2014 19:55:19 +0100
+Subject: [PATCH] Add Documentation fields to systemd service files
+
+We point to the manpages where available and redirect to libvirt's
+homepage as a last resort.
+
+(cherry picked from commit 1b9f5aa7fe67d9d4bb843db3580bdbc917c49a10)
+---
+ daemon/libvirtd.service.in       | 2 ++
+ src/locking/virtlockd.service.in | 2 ++
+ tools/libvirt-guests.service.in  | 2 ++
+ 3 files changed, 6 insertions(+)
+
+diff --git a/daemon/libvirtd.service.in b/daemon/libvirtd.service.in
+index 25979ef..dc2433a 100644
+--- a/daemon/libvirtd.service.in
++++ b/daemon/libvirtd.service.in
+@@ -9,6 +9,8 @@ Before=libvirt-guests.service
+ After=network.target
+ After=dbus.service
+ After=iscsid.service
++Documentation=man:libvirtd(8)
++Documentation=http://libvirt.org
+ 
+ [Service]
+ EnvironmentFile=-/etc/sysconfig/libvirtd
+diff --git a/src/locking/virtlockd.service.in b/src/locking/virtlockd.service.in
+index 0ef9923..059c14e 100644
+--- a/src/locking/virtlockd.service.in
++++ b/src/locking/virtlockd.service.in
+@@ -1,6 +1,8 @@
+ [Unit]
+ Description=Virtual machine lock manager
+ Requires=virtlockd.socket
++Documentation=man:virtlockd(8)
++Documentation=http://libvirt.org
+ 
+ [Service]
+ EnvironmentFile=-/etc/sysconfig/virtlockd
+diff --git a/tools/libvirt-guests.service.in b/tools/libvirt-guests.service.in
+index d48d4b8..d8d7adf 100644
+--- a/tools/libvirt-guests.service.in
++++ b/tools/libvirt-guests.service.in
+@@ -1,6 +1,8 @@
+ [Unit]
+ Description=Suspend Active Libvirt Guests
+ After=network.target libvirtd.service
++Documentation=man:libvirtd(8)
++Documentation=http://libvirt.org
+ 
+ [Service]
+ EnvironmentFile=-/etc/sysconfig/libvirt-guests

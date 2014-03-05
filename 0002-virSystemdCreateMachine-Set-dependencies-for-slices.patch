@@ -1,0 +1,41 @@
+From 08abb8225b8104693e71d0f0e610edfdefb085f2 Mon Sep 17 00:00:00 2001
+From: Michal Privoznik <mprivozn@redhat.com>
+Date: Fri, 21 Feb 2014 10:16:36 +0100
+Subject: [PATCH] virSystemdCreateMachine: Set dependencies for slices
+
+https://bugzilla.redhat.com/show_bug.cgi?id=1031696
+
+When creating a new domain, we let systemd know about it by calling
+CreateMachine() function via dbus. Systemd then creates a scope and
+places domain into it. However, later when the host is shutting
+down, systemd computes the shutdown order to see what processes can
+be shut down in parallel. And since we were not setting
+dependencies at all, the slices (and thus domains) were most likely
+killed before libvirt-guests.service. So user domains that had to
+be saved, shut off, whatever were in fact killed.  This problem can
+be solved by letting systemd know that scopes we're creating must
+not be killed before libvirt-guests.service.
+
+Signed-off-by: Michal Privoznik <mprivozn@redhat.com>
+(cherry picked from commit ba79e3879e771417ee90e125d8b38743a867d7d1)
+---
+ src/util/virsystemd.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/src/util/virsystemd.c b/src/util/virsystemd.c
+index 1ba37cc..4e2721b 100644
+--- a/src/util/virsystemd.c
++++ b/src/util/virsystemd.c
+@@ -242,8 +242,10 @@ int virSystemdCreateMachine(const char *name,
+                           iscontainer ? "container" : "vm",
+                           (unsigned int)pidleader,
+                           rootdir ? rootdir : "",
+-                          1, "Slice", "s",
+-                          slicename) < 0)
++                          3,
++                          "Slice", "s", slicename,
++                          "After", "as", 1, "libvirtd.service",
++                          "Before", "as", 1, "libvirt-guests.service") < 0)
+         goto cleanup;
+ 
+     ret = 0;

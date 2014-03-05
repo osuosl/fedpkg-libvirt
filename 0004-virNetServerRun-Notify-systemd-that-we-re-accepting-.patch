@@ -1,0 +1,193 @@
+From 876861ca02d466c70ab0782bbdb4bf03d4e03148 Mon Sep 17 00:00:00 2001
+From: Michal Privoznik <mprivozn@redhat.com>
+Date: Fri, 21 Feb 2014 13:06:42 +0100
+Subject: [PATCH] virNetServerRun: Notify systemd that we're accepting clients
+
+Systemd does not forget about the cases, where client service needs to
+wait for daemon service to initialize and start accepting new clients.
+Setting a dependency in client is not enough as systemd doesn't know
+when the daemon has initialized itself and started accepting new
+clients. However, it offers a mechanism to solve this. The daemon needs
+to call a special systemd function by which the daemon tells "I'm ready
+to accept new clients". This is exactly what we need with
+libvirtd-guests (client) and libvirtd (daemon). So now, with this
+change, libvirt-guests.service is invoked not any sooner than
+libvirtd.service calls the systemd notify function.
+
+Signed-off-by: Michal Privoznik <mprivozn@redhat.com>
+(cherry picked from commit 68954fb25c4a75c5c2c213f57927eb188cca2239)
+---
+ configure.ac               |  2 ++
+ daemon/libvirtd.service.in |  1 +
+ m4/virt-systemd-daemon.m4  | 34 ++++++++++++++++++++++++++++++++++
+ src/Makefile.am            |  4 ++--
+ src/libvirt_private.syms   |  1 +
+ src/rpc/virnetserver.c     |  5 +++++
+ src/util/virsystemd.c      | 12 ++++++++++++
+ src/util/virsystemd.h      |  2 ++
+ 8 files changed, 59 insertions(+), 2 deletions(-)
+ create mode 100644 m4/virt-systemd-daemon.m4
+
+diff --git a/configure.ac b/configure.ac
+index aea0bd3..0d5cf59 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -228,6 +228,7 @@ LIBVIRT_CHECK_SANLOCK
+ LIBVIRT_CHECK_SASL
+ LIBVIRT_CHECK_SELINUX
+ LIBVIRT_CHECK_SSH2
++LIBVIRT_CHECK_SYSTEMD_DAEMON
+ LIBVIRT_CHECK_UDEV
+ LIBVIRT_CHECK_YAJL
+ 
+@@ -2731,6 +2732,7 @@ LIBVIRT_RESULT_SANLOCK
+ LIBVIRT_RESULT_SASL
+ LIBVIRT_RESULT_SELINUX
+ LIBVIRT_RESULT_SSH2
++LIBVIRT_RESULT_SYSTEMD_DAEMON
+ LIBVIRT_RESULT_UDEV
+ LIBVIRT_RESULT_YAJL
+ AC_MSG_NOTICE([  libxml: $LIBXML_CFLAGS $LIBXML_LIBS])
+diff --git a/daemon/libvirtd.service.in b/daemon/libvirtd.service.in
+index dc2433a..e1f2a07 100644
+--- a/daemon/libvirtd.service.in
++++ b/daemon/libvirtd.service.in
+@@ -13,6 +13,7 @@ Documentation=man:libvirtd(8)
+ Documentation=http://libvirt.org
+ 
+ [Service]
++Type=notify
+ EnvironmentFile=-/etc/sysconfig/libvirtd
+ ExecStart=@sbindir@/libvirtd $LIBVIRTD_ARGS
+ ExecReload=/bin/kill -HUP $MAINPID
+diff --git a/m4/virt-systemd-daemon.m4 b/m4/virt-systemd-daemon.m4
+new file mode 100644
+index 0000000..8516e41
+--- /dev/null
++++ b/m4/virt-systemd-daemon.m4
+@@ -0,0 +1,34 @@
++dnl The libsystemd-daemon.so library
++dnl
++dnl Copyright (C) 2012-2013 Red Hat, Inc.
++dnl
++dnl This library is free software; you can redistribute it and/or
++dnl modify it under the terms of the GNU Lesser General Public
++dnl License as published by the Free Software Foundation; either
++dnl version 2.1 of the License, or (at your option) any later version.
++dnl
++dnl This library is distributed in the hope that it will be useful,
++dnl but WITHOUT ANY WARRANTY; without even the implied warranty of
++dnl MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++dnl Lesser General Public License for more details.
++dnl
++dnl You should have received a copy of the GNU Lesser General Public
++dnl License along with this library.  If not, see
++dnl <http://www.gnu.org/licenses/>.
++dnl
++
++AC_DEFUN([LIBVIRT_CHECK_SYSTEMD_DAEMON],[
++  LIBVIRT_CHECK_PKG([SYSTEMD_DAEMON], [libsystemd-daemon], [0.27.1])
++
++    old_CFLAGS="$CFLAGS"
++    old_LIBS="$LIBS"
++    CFLAGS="$CFLAGS $SYSTEMD_DAEMON_CFLAGS"
++    LIBS="$LIBS $SYSTEMD_DAEMON_LIBS"
++    AC_CHECK_FUNCS([sd_notify])
++    CFLAGS="$old_CFLAGS"
++    LIBS="$old_LIBS"
++])
++
++AC_DEFUN([LIBVIRT_RESULT_SYSTEMD_DAEMON],[
++  LIBVIRT_RESULT_LIB([SYSTEMD_DAEMON])
++])
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 1a2cf6b..f813b68 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -933,11 +933,11 @@ libvirt_util_la_SOURCES =					\
+ libvirt_util_la_CFLAGS = $(CAPNG_CFLAGS) $(YAJL_CFLAGS) $(LIBNL_CFLAGS) \
+ 		$(AM_CFLAGS) $(AUDIT_CFLAGS) $(DEVMAPPER_CFLAGS) \
+ 		$(DBUS_CFLAGS) $(LDEXP_LIBM) $(NUMACTL_CFLAGS)	\
+-		-I$(top_srcdir)/src/conf
++		$(SYSTEMD_DAEMON_CFLAGS) -I$(top_srcdir)/src/conf
+ libvirt_util_la_LIBADD = $(CAPNG_LIBS) $(YAJL_LIBS) $(LIBNL_LIBS) \
+ 		$(THREAD_LIBS) $(AUDIT_LIBS) $(DEVMAPPER_LIBS) \
+ 		$(LIB_CLOCK_GETTIME) $(DBUS_LIBS) $(MSCOM_LIBS) $(LIBXML_LIBS) \
+-		$(SECDRIVER_LIBS) $(NUMACTL_LIBS)
++		$(SECDRIVER_LIBS) $(NUMACTL_LIBS) $(SYSTEMD_DAEMON_LIBS)
+ 
+ 
+ noinst_LTLIBRARIES += libvirt_conf.la
+diff --git a/src/libvirt_private.syms b/src/libvirt_private.syms
+index d7bed65..babca5f 100644
+--- a/src/libvirt_private.syms
++++ b/src/libvirt_private.syms
+@@ -1955,6 +1955,7 @@ virSystemdCreateMachine;
+ virSystemdMakeMachineName;
+ virSystemdMakeScopeName;
+ virSystemdMakeSliceName;
++virSystemdNotifyStartup;
+ virSystemdTerminateMachine;
+ 
+ 
+diff --git a/src/rpc/virnetserver.c b/src/rpc/virnetserver.c
+index 2306e10..df61036 100644
+--- a/src/rpc/virnetserver.c
++++ b/src/rpc/virnetserver.c
+@@ -38,6 +38,7 @@
+ #include "virnetservermdns.h"
+ #include "virdbus.h"
+ #include "virstring.h"
++#include "virsystemd.h"
+ 
+ #ifndef SA_SIGINFO
+ # define SA_SIGINFO 0
+@@ -1085,6 +1086,10 @@ void virNetServerRun(virNetServerPtr srv)
+         goto cleanup;
+     }
+ 
++    /* We are accepting connections now. Notify systemd
++     * so it can start dependent services. */
++    virSystemdNotifyStartup();
++
+     VIR_DEBUG("srv=%p quit=%d", srv, srv->quit);
+     while (!srv->quit) {
+         /* A shutdown timeout is specified, so check
+diff --git a/src/util/virsystemd.c b/src/util/virsystemd.c
+index 4e2721b..d9837ce 100644
+--- a/src/util/virsystemd.c
++++ b/src/util/virsystemd.c
+@@ -21,6 +21,10 @@
+ 
+ #include <config.h>
+ 
++#ifdef WITH_SYSTEMD_DAEMON
++# include <systemd/sd-daemon.h>
++#endif
++
+ #include "virsystemd.h"
+ #include "virdbus.h"
+ #include "virstring.h"
+@@ -302,3 +306,11 @@ cleanup:
+     VIR_FREE(machinename);
+     return ret;
+ }
++
++void
++virSystemdNotifyStartup(void)
++{
++#ifdef WITH_SYSTEMD_DAEMON
++    sd_notify(0, "READY=1");
++#endif
++}
+diff --git a/src/util/virsystemd.h b/src/util/virsystemd.h
+index d9845e1..7fed456 100644
+--- a/src/util/virsystemd.h
++++ b/src/util/virsystemd.h
+@@ -46,4 +46,6 @@ int virSystemdTerminateMachine(const char *name,
+                                const char *drivername,
+                                bool privileged);
+ 
++void virSystemdNotifyStartup(void);
++
+ #endif /* __VIR_SYSTEMD_H__ */
