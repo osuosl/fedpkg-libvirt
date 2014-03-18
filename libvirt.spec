@@ -367,7 +367,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 1.1.3.4
-Release: 3%{?dist}%{?extra_release}
+Release: 4%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -386,6 +386,9 @@ Patch0004: 0004-virNetServerRun-Notify-systemd-that-we-re-accepting-.patch
 # Escape XML characters in volume XML (bz #1074528)
 Patch0005: 0005-maint-fix-comma-style-issues-conf.patch
 Patch0006: 0006-storage-use-valid-XML-for-awkward-volume-names.patch
+# Fix migration failure occurring with VIR_DOMAIN_XML_MIGRATABLE (bz
+# #1075174)
+Patch0007: 0007-qemu-Introduce-qemuDomainDefCheckABIStability.patch
 
 %if %{with_libvirtd}
 Requires: libvirt-daemon = %{version}-%{release}
@@ -1178,6 +1181,9 @@ of recent versions of Linux (and other OSes).
 # Escape XML characters in volume XML (bz #1074528)
 %patch0005 -p1
 %patch0006 -p1
+# Fix migration failure occurring with VIR_DOMAIN_XML_MIGRATABLE (bz
+# #1075174)
+%patch0007 -p1
 
 %build
 %if ! %{with_xen}
@@ -2136,6 +2142,9 @@ fi
 %endif
 
 %changelog
+* Tue Mar 18 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.4-4
+- Fix migration failure occurring with VIR_DOMAIN_XML_MIGRATABLE (bz #1075174)
+
 * Mon Mar 10 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.4-3
 - Escape XML characters in volume XML (bz #1074528)
 
