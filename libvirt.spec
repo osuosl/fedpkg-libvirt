@@ -366,8 +366,8 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 1.1.3.4
-Release: 4%{?dist}%{?extra_release}
+Version: 1.1.3.5
+Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -377,18 +377,6 @@ URL: http://libvirt.org/
     %define mainturl stable_updates/
 %endif
 Source: http://libvirt.org/sources/%{?mainturl}libvirt-%{version}.tar.gz
-
-# Fix libvirt-guests.service on host boot (bz #1031696)
-Patch0001: 0001-Add-Documentation-fields-to-systemd-service-files.patch
-Patch0002: 0002-virSystemdCreateMachine-Set-dependencies-for-slices.patch
-Patch0003: 0003-libvirt-guests-Wait-for-libvirtd-to-initialize.patch
-Patch0004: 0004-virNetServerRun-Notify-systemd-that-we-re-accepting-.patch
-# Escape XML characters in volume XML (bz #1074528)
-Patch0005: 0005-maint-fix-comma-style-issues-conf.patch
-Patch0006: 0006-storage-use-valid-XML-for-awkward-volume-names.patch
-# Fix migration failure occurring with VIR_DOMAIN_XML_MIGRATABLE (bz
-# #1075174)
-Patch0007: 0007-qemu-Introduce-qemuDomainDefCheckABIStability.patch
 
 %if %{with_libvirtd}
 Requires: libvirt-daemon = %{version}-%{release}
@@ -1172,18 +1160,6 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
-
-# Fix libvirt-guests.service on host boot (bz #1031696)
-%patch0001 -p1
-%patch0002 -p1
-%patch0003 -p1
-%patch0004 -p1
-# Escape XML characters in volume XML (bz #1074528)
-%patch0005 -p1
-%patch0006 -p1
-# Fix migration failure occurring with VIR_DOMAIN_XML_MIGRATABLE (bz
-# #1075174)
-%patch0007 -p1
 
 %build
 %if ! %{with_xen}
@@ -2142,6 +2118,14 @@ fi
 %endif
 
 %changelog
+* Sat May 03 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.5-1
+- Rebased to version 1.1.3.5
+- Fix QXL PCI address conflict (bz #1016775)
+- Fix journald PRIORITY values (bz #1043550)
+- Fix crash with filterref and update-device (bz #1093301)
+- Fix 'cannot find session' error with iscsi (bz #1093791)
+- Fix bond XML issues (bz #1084702)
+
 * Tue Mar 18 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.4-4
 - Fix migration failure occurring with VIR_DOMAIN_XML_MIGRATABLE (bz #1075174)
 
