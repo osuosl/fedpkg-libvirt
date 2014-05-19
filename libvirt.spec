@@ -367,7 +367,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 1.1.3.5
-Release: 1%{?dist}%{?extra_release}
+Release: 2%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -377,6 +377,14 @@ URL: http://libvirt.org/
     %define mainturl stable_updates/
 %endif
 Source: http://libvirt.org/sources/%{?mainturl}libvirt-%{version}.tar.gz
+
+# Fix xen hvm VNC port (bz #1094262)
+Patch0001: 0001-libxl-fix-framebuffer-port-setting-for-HVM-domains.patch
+# CVE-2014-0179: Unsafe XML parsing (bz #1094792, bz #1088290)
+Patch0002: 0002-LSN-2014-0003-Don-t-expand-entities-when-parsing-XML.patch
+# Fix failure to start xen instances (rackspace in particular) (bz
+# #1098376)
+Patch0003: 0003-libxl-Check-for-control_d-string-to-decide-about-dom.patch
 
 %if %{with_libvirtd}
 Requires: libvirt-daemon = %{version}-%{release}
@@ -1160,6 +1168,14 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
+
+# Fix xen hvm VNC port (bz #1094262)
+%patch0001 -p1
+# CVE-2014-0179: Unsafe XML parsing (bz #1094792, bz #1088290)
+%patch0002 -p1
+# Fix failure to start xen instances (rackspace in particular) (bz
+# #1098376)
+%patch0003 -p1
 
 %build
 %if ! %{with_xen}
@@ -2118,6 +2134,11 @@ fi
 %endif
 
 %changelog
+* Mon May 19 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.5-2
+- Fix xen hvm VNC port (bz #1094262)
+- CVE-2014-0179: Unsafe XML parsing (bz #1094792, bz #1088290)
+- Fix failure to start xen instances (rackspace in particular) (bz #1098376)
+
 * Sat May 03 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.5-1
 - Rebased to version 1.1.3.5
 - Fix QXL PCI address conflict (bz #1016775)

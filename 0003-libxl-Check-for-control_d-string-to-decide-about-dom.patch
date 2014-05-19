@@ -1,0 +1,49 @@
+From 5fd44adb6baeeb686a9c3ac89a5188ace1fb5e40 Mon Sep 17 00:00:00 2001
+From: Stefan Bader <stefan.bader@canonical.com>
+Date: Wed, 12 Mar 2014 13:03:26 +0100
+Subject: [PATCH] libxl: Check for control_d string to decide about dom0
+
+As soon as any guest mounts xenfs to /proc/xen, there is a capabilities
+file in that directory. However it returns nothing when reading from it.
+Change the test to actually check the contents of the file.
+
+BugLink: http://bugs.launchpad.net/bugs/1248025
+
+Signed-off-by: Stefan Bader <stefan.bader@canonical.com>
+(cherry picked from commit 8c869ad9f9c5d57ba0ef516835a08afdba7ad828)
+---
+ src/libxl/libxl_driver.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/src/libxl/libxl_driver.c b/src/libxl/libxl_driver.c
+index 764a686..fb2a7cc 100644
+--- a/src/libxl/libxl_driver.c
++++ b/src/libxl/libxl_driver.c
+@@ -783,6 +783,7 @@ libxlDriverShouldLoad(bool privileged)
+     bool ret = false;
+     virCommandPtr cmd;
+     int status;
++    char *output = NULL;
+ 
+     /* Don't load if non-root */
+     if (!privileged) {
+@@ -790,8 +791,17 @@ libxlDriverShouldLoad(bool privileged)
+         return ret;
+     }
+ 
+-    /* Don't load if not running on a Xen control domain (dom0) */
+-    if (!virFileExists("/proc/xen/capabilities")) {
++    /*
++     * Don't load if not running on a Xen control domain (dom0). It is not
++     * sufficient to check for the file to exist as any guest can mount
++     * xenfs to /proc/xen.
++     */
++    status = virFileReadAll("/proc/xen/capabilities", 10, &output);
++    if (status >= 0) {
++        status = strncmp(output, "control_d", 9);
++    }
++    VIR_FREE(output);
++    if (status) {
+         VIR_INFO("No Xen capabilities detected, probably not running "
+                  "in a Xen Dom0.  Disabling libxenlight driver");
+ 

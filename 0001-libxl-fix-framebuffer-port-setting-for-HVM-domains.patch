@@ -1,0 +1,53 @@
+From 811738592be072be6329d320219a288194b5bb3e Mon Sep 17 00:00:00 2001
+From: Jim Fehlig <jfehlig@suse.com>
+Date: Mon, 17 Mar 2014 14:22:44 -0600
+Subject: [PATCH] libxl: fix framebuffer port setting for HVM domains
+
+libxl uses the libxl_vnc_info and libxl_sdl_info fields from the
+hvm union in libxl_domain_build_info struct when generating QEMU
+args for VNC or SDL.  These fields were left unset by the libxl
+driver, causing libxl to ignore any user settings.  E.g. with
+
+  <graphics type='vnc' port='5950'/>
+
+port would be ignored and QEMU would instead be invoked with
+
+  -vnc 127.0.0.1:0,to=99
+
+Unlike the libxl_domain_config struct, the libxl_domain_build_info
+contains only a single libxl_vnc_info and libxl_sdl_info, so
+populate these fields from the first vfb in
+libxl_domain_config->vfbs.
+
+Signed-off-by: Jim Fehlig <jfehlig@suse.com>
+Signed-off-by: David Kiarie <davidkiarie4@gmail.com>
+(cherry picked from commit b55cc5f4e31b488c4f9c3c8470c992c1f8f5d09c)
+---
+ src/libxl/libxl_conf.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/src/libxl/libxl_conf.c b/src/libxl/libxl_conf.c
+index d4226b8..f796804 100644
+--- a/src/libxl/libxl_conf.c
++++ b/src/libxl/libxl_conf.c
+@@ -1003,6 +1003,20 @@ libxlMakeVfbList(libxlDriverPrivatePtr driver,
+     d_config->vkbs = x_vkbs;
+     d_config->num_vfbs = d_config->num_vkbs = nvfbs;
+ 
++    /*
++     * VNC or SDL info must also be set in libxl_domain_build_info
++     * for HVM domains.  Use the first vfb device.
++     */
++    if (STREQ(def->os.type, "hvm")) {
++        libxl_domain_build_info *b_info = &d_config->b_info;
++        libxl_device_vfb vfb = d_config->vfbs[0];
++
++        if (libxl_defbool_val(vfb.vnc.enable))
++            memcpy(&b_info->u.hvm.vnc, &vfb.vnc, sizeof(libxl_vnc_info));
++        else if (libxl_defbool_val(vfb.sdl.enable))
++            memcpy(&b_info->u.hvm.sdl, &vfb.sdl, sizeof(libxl_sdl_info));
++    }
++
+     return 0;
+ 
+ error:
