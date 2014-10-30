@@ -1,0 +1,75 @@
+From fb3f5f1b15ba389f47036417e599376d779b4c0b Mon Sep 17 00:00:00 2001
+Message-Id: <fb3f5f1b15ba389f47036417e599376d779b4c0b.1414679795.git.crobinso@redhat.com>
+From: Lubomir Rintel <lkundrak@v3.sk>
+Date: Tue, 9 Sep 2014 14:20:43 +0200
+Subject: [PATCH] node_device_udev: Try harder to get human readable
+ vendor:product
+
+The manufacurer and product from USB device itself are usually not particularly
+useful -- they tend to be missing, or ugly (all-uppercase, padded with spaces,
+etc.). Prefer what's in the usb id database and fall back to descriptors only
+if the device is too new to be in database.
+
+https://bugzilla.redhat.com/show_bug.cgi?id=1138887
+(cherry picked from commit 3ef77a544d4313cdfe257717708548f57e6db971)
+---
+ src/node_device/node_device_udev.c | 27 +++++++++++++++++++++------
+ 1 file changed, 21 insertions(+), 6 deletions(-)
+
+diff --git a/src/node_device/node_device_udev.c b/src/node_device/node_device_udev.c
+index 785c2fa..a2f9e57 100644
+--- a/src/node_device/node_device_udev.c
++++ b/src/node_device/node_device_udev.c
+@@ -532,6 +532,7 @@ static int udevProcessUSBDevice(struct udev_device *device,
+ {
+     union _virNodeDevCapData *data = &def->caps->data;
+     int ret = -1;
++    int err;
+ 
+     if (udevGetUintProperty(device,
+                             "BUSNUM",
+@@ -554,10 +555,17 @@ static int udevProcessUSBDevice(struct udev_device *device,
+         goto out;
+     }
+ 
+-    if (udevGetStringSysfsAttr(device,
+-                              "manufacturer",
+-                              &data->usb_dev.vendor_name) == PROPERTY_ERROR) {
++    err = udevGetStringProperty(device,
++                                "ID_VENDOR_FROM_DATABASE",
++                                &data->usb_dev.vendor_name);
++    if (err == PROPERTY_ERROR)
+         goto out;
++    if (err == PROPERTY_MISSING) {
++        if (udevGetStringSysfsAttr(device,
++                                  "manufacturer",
++                                  &data->usb_dev.vendor_name) == PROPERTY_ERROR) {
++            goto out;
++        }
+     }
+ 
+     if (udevGetUintProperty(device,
+@@ -567,10 +575,17 @@ static int udevProcessUSBDevice(struct udev_device *device,
+         goto out;
+     }
+ 
+-    if (udevGetStringSysfsAttr(device,
+-                              "product",
+-                              &data->usb_dev.product_name) == PROPERTY_ERROR) {
++    err = udevGetStringProperty(device,
++                                "ID_MODEL_FROM_DATABASE",
++                                &data->usb_dev.product_name);
++    if (err == PROPERTY_ERROR)
+         goto out;
++    if (err == PROPERTY_MISSING) {
++        if (udevGetStringSysfsAttr(device,
++                                  "product",
++                                  &data->usb_dev.product_name) == PROPERTY_ERROR) {
++            goto out;
++        }
+     }
+ 
+     if (udevGenerateDeviceName(device, def, NULL) != 0) {
+-- 
+2.1.0
+
