@@ -362,8 +362,8 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 1.2.9
-Release: 4%{?dist}%{?extra_release}
+Version: 1.2.9.1
+Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -374,15 +374,12 @@ URL: http://libvirt.org/
 %endif
 Source: http://libvirt.org/sources/%{?mainturl}libvirt-%{version}.tar.gz
 
-# Fix specifying CPU for qemu aarch64
-Patch0001: 0001-qemu_command-Split-qemuBuildCpuArgStr.patch
-Patch0002: 0002-qemu-Don-t-compare-CPU-against-host-for-TCG.patch
-# Fix selinux errors with /dev/net/tun (bz #1147057)
-Patch0003: 0003-security_selinux-Don-t-relabel-dev-net-tun.patch
-# Fix creating i686 guest with x86_64 emulator (bz #1153797)
-Patch0004: 0004-qemu-x86_64-is-good-enough-for-i686.patch
-# Fix tests with latest libxml2
-Patch0005: 0005-util-Prepare-URI-formatting-for-libxml2-2.9.2.patch
+# ppc64le fixes (bz #1163439)
+Patch0001: 0001-Cpu-Add-support-for-Power-LE-Architecture.patch
+Patch0002: 0002-PowerPC-Add-support-for-launching-VM-in-compat-mode.patch
+Patch0003: 0003-PowerPC-Improve-PVR-handling-to-fall-back-to-cpu-gen.patch
+Patch0004: 0004-docs-Add-documentation-for-compat-mode.patch
+Patch0005: 0005-Test-Add-a-testcase-for-PowerPC-compat-mode-cpu-spec.patch
 
 %if %{with_libvirtd}
 Requires: libvirt-daemon = %{version}-%{release}
@@ -1208,14 +1205,11 @@ driver
 %prep
 %setup -q
 
-# Fix specifying CPU for qemu aarch64
+# ppc64le fixes (bz #1163439)
 %patch0001 -p1
 %patch0002 -p1
-# Fix selinux errors with /dev/net/tun (bz #1147057)
 %patch0003 -p1
-# Fix creating i686 guest with x86_64 emulator (bz #1153797)
 %patch0004 -p1
-# Fix tests with latest libxml2
 %patch0005 -p1
 
 %build
@@ -2294,6 +2288,11 @@ exit 0
 %doc examples/systemtap
 
 %changelog
+* Sat Nov 15 2014 Cole Robinson <crobinso@redhat.com> - 1.2.9.1-1
+- Rebased to version 1.2.9.1
+- ppc64le fixes (bz #1163439)
+- Fix caps probing when KVM is disabled (bz #1160318)
+
 * Thu Oct 30 2014 Cole Robinson <crobinso@redhat.com> - 1.2.9-4
 - Fix creating i686 guest with x86_64 emulator (bz #1153797)
 - Fix tests with latest libxml2
