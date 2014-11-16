@@ -366,8 +366,8 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 1.1.3.6
-Release: 2%{?dist}%{?extra_release}
+Version: 1.1.3.8
+Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -377,9 +377,6 @@ URL: http://libvirt.org/
     %define mainturl stable_updates/
 %endif
 Source: http://libvirt.org/sources/%{?mainturl}libvirt-%{version}.tar.gz
-
-# Fix USB device descriptions (bz #1138887)
-Patch0001: 0001-node_device_udev-Try-harder-to-get-human-readable-ve.patch
 
 %if %{with_libvirtd}
 Requires: libvirt-daemon = %{version}-%{release}
@@ -1163,9 +1160,6 @@ of recent versions of Linux (and other OSes).
 
 %prep
 %setup -q
-
-# Fix USB device descriptions (bz #1138887)
-%patch0001 -p1
 
 %build
 %if ! %{with_xen}
@@ -2124,6 +2118,12 @@ fi
 %endif
 
 %changelog
+* Sat Nov 15 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.8-1
+- Rebased to version 1.1.3.8
+- CVE-2014-3633: out-of-bounds read in blockiotune (bz #1160823)
+- CVE-2014-3657: Potential deadlock in domain_conf (bz #1160824)
+- CVE-2014-7823: information leak with migratable flag (bz #1160822)
+
 * Thu Oct 30 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.6-2
 - Fix USB device descriptions (bz #1138887)
 
