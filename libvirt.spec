@@ -363,7 +363,7 @@
 Summary: Library providing a simple virtualization API
 Name: libvirt
 Version: 1.2.9.1
-Release: 1%{?dist}%{?extra_release}
+Release: 2%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -380,6 +380,9 @@ Patch0002: 0002-PowerPC-Add-support-for-launching-VM-in-compat-mode.patch
 Patch0003: 0003-PowerPC-Improve-PVR-handling-to-fall-back-to-cpu-gen.patch
 Patch0004: 0004-docs-Add-documentation-for-compat-mode.patch
 Patch0005: 0005-Test-Add-a-testcase-for-PowerPC-compat-mode-cpu-spec.patch
+# Don't reject aarch64 + uefi
+Patch0006: 0006-qemu-Support-OVMF-on-armv7l-aarch64-guests.patch
+Patch0007: 0007-qemu-Drop-OVMF-whitelist.patch
 
 %if %{with_libvirtd}
 Requires: libvirt-daemon = %{version}-%{release}
@@ -1211,6 +1214,9 @@ driver
 %patch0003 -p1
 %patch0004 -p1
 %patch0005 -p1
+# Don't reject aarch64 + uefi
+%patch0006 -p1
+%patch0007 -p1
 
 %build
 %if ! %{with_xen}
@@ -2288,6 +2294,9 @@ exit 0
 %doc examples/systemtap
 
 %changelog
+* Tue Dec 02 2014 Cole Robinson <crobinso@redhat.com> - 1.2.9.1-2
+- Don't reject aarch64 + uefi
+
 * Sat Nov 15 2014 Cole Robinson <crobinso@redhat.com> - 1.2.9.1-1
 - Rebased to version 1.2.9.1
 - ppc64le fixes (bz #1163439)
