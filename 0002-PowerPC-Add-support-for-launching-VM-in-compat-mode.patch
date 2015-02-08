@@ -70,7 +70,7 @@ index d591c18..4ea1835 100644
          const struct ppc_vendor *vnd;
  
 diff --git a/src/qemu/qemu_command.c b/src/qemu/qemu_command.c
-index 6cd0da6..9619d28 100644
+index c5c48bf..423692e 100644
 --- a/src/qemu/qemu_command.c
 +++ b/src/qemu/qemu_command.c
 @@ -6217,7 +6217,9 @@ qemuBuildCpuModelArgStr(virQEMUDriverPtr driver,

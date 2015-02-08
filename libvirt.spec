@@ -362,8 +362,8 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 1.2.9.1
-Release: 2%{?dist}%{?extra_release}
+Version: 1.2.9.2
+Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
@@ -380,9 +380,6 @@ Patch0002: 0002-PowerPC-Add-support-for-launching-VM-in-compat-mode.patch
 Patch0003: 0003-PowerPC-Improve-PVR-handling-to-fall-back-to-cpu-gen.patch
 Patch0004: 0004-docs-Add-documentation-for-compat-mode.patch
 Patch0005: 0005-Test-Add-a-testcase-for-PowerPC-compat-mode-cpu-spec.patch
-# Don't reject aarch64 + uefi
-Patch0006: 0006-qemu-Support-OVMF-on-armv7l-aarch64-guests.patch
-Patch0007: 0007-qemu-Drop-OVMF-whitelist.patch
 
 %if %{with_libvirtd}
 Requires: libvirt-daemon = %{version}-%{release}
@@ -1214,9 +1211,6 @@ driver
 %patch0003 -p1
 %patch0004 -p1
 %patch0005 -p1
-# Don't reject aarch64 + uefi
-%patch0006 -p1
-%patch0007 -p1
 
 %build
 %if ! %{with_xen}
@@ -2294,6 +2288,16 @@ exit 0
 %doc examples/systemtap
 
 %changelog
+* Sat Feb 07 2015 Cole Robinson <crobinso@redhat.com> - 1.2.9.2-1
+- Rebased to version 1.2.9.2
+- CVE-2014-8131: deadlock and segfault in qemuConnectGetAllDomainStats (bz
+  #1172571)
+- CVE-2015-0236: missing ACL check for the VIR_DOMAIN_XML_SECURE flag in save
+  images and snapshots objects (bz #1185769)
+- CVE-2014-8136: local denial of service in qemu/qemu_driver.c (bz #1176179)
+- Fix crash parsing nbd URIs (bz #1188644)
+- Fix domain startup failing with 'strict' mode in numatune (bz #1168672)
+
 * Tue Dec 02 2014 Cole Robinson <crobinso@redhat.com> - 1.2.9.1-2
 - Don't reject aarch64 + uefi
 
