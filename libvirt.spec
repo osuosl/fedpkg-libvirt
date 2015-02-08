@@ -11,7 +11,7 @@
 # Default to skipping autoreconf.  Distros can change just this one line
 # (or provide a command-line override) if they backport any patches that
 # touch configure.ac or Makefile.am.
-%{!?enable_autotools:%define enable_autotools 1}
+%{!?enable_autotools:%define enable_autotools 0}
 
 # A client only build will create a libvirt.so only containing
 # the generic RPC driver, and test driver and no libvirtd
@@ -366,7 +366,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 1.1.3.8
+Version: 1.1.3.9
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -1706,7 +1706,7 @@ fi
 /sbin/ldconfig
 %if %{with_systemd}
     %if %{with_systemd_macros}
-        %systemd_postun_with_restart libvirt-guests.service
+        %systemd_postun libvirt-guests.service
     %endif
 %triggerun client -- libvirt < 0.9.4
 %{_bindir}/systemd-sysv-convert --save libvirt-guests >/dev/null 2>&1 ||:
@@ -1714,9 +1714,8 @@ fi
 # If the package is allowed to autostart:
 /bin/systemctl --no-reload enable libvirt-guests.service >/dev/null 2>&1 ||:
 
-# Run these because the SysV package being removed won't do them
+# Run this because the SysV package being removed won't do them
 /sbin/chkconfig --del libvirt-guests >/dev/null 2>&1 || :
-/bin/systemctl try-restart libvirt-guests.service >/dev/null 2>&1 || :
 %endif
 
 %if %{with_sanlock}
@@ -2118,6 +2117,12 @@ fi
 %endif
 
 %changelog
+* Sat Feb 07 2015 Cole Robinson <crobinso@redhat.com> - 1.1.3.9-1
+- Rebased to version 1.1.3.9
+- CVE-2015-0236: missing ACL check for the VIR_DOMAIN_XML_SECURE flag in save
+  images and snapshots objects (bz #1185769)
+- CVE-2014-8136: local denial of service in qemu/qemu_driver.c (bz #1176179)
+
 * Sat Nov 15 2014 Cole Robinson <crobinso@redhat.com> - 1.1.3.8-1
 - Rebased to version 1.1.3.8
 - CVE-2014-3633: out-of-bounds read in blockiotune (bz #1160823)
