@@ -380,6 +380,7 @@ Patch0002: 0002-PowerPC-Add-support-for-launching-VM-in-compat-mode.patch
 Patch0003: 0003-PowerPC-Improve-PVR-handling-to-fall-back-to-cpu-gen.patch
 Patch0004: 0004-docs-Add-documentation-for-compat-mode.patch
 Patch0005: 0005-Test-Add-a-testcase-for-PowerPC-compat-mode-cpu-spec.patch
+Patch0006: 0006-forbid-null.patch
 
 %if %{with_libvirtd}
 Requires: libvirt-daemon = %{version}-%{release}
@@ -1211,6 +1212,7 @@ driver
 %patch0003 -p1
 %patch0004 -p1
 %patch0005 -p1
+%patch0006 -p1
 
 %build
 %if ! %{with_xen}

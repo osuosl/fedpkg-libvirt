@@ -1,0 +1,12 @@
+--- libvirt-1.2.9.2.old/src/qemu/qemu_command.c	2015-03-04 03:58:48.328395743 +0000
++++ libvirt-1.2.9.2/src/qemu/qemu_command.c	2015-03-04 04:00:34.709342525 +0000
+@@ -6236,7 +6236,8 @@
+         virBufferAddLit(buf, "host");
+ 
+         if (ARCH_IS_PPC64(def->os.arch) &&
+-            cpu->mode == VIR_CPU_MODE_HOST_MODEL) {
++            cpu->mode == VIR_CPU_MODE_HOST_MODEL &&
++            def->cpu->model != NULL) {
+             virBufferAsprintf(buf, ",compat=%s", def->cpu->model);
+         }
+ 
