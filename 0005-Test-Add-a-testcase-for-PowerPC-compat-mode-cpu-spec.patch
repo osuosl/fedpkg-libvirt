@@ -57,10 +57,10 @@ index 0000000..e34a8ad
 +  </devices>
 +</domain>
 diff --git a/tests/qemuxml2argvtest.c b/tests/qemuxml2argvtest.c
-index cdafa1e..67c6359 100644
+index 5539a84..e24d17f 100644
 --- a/tests/qemuxml2argvtest.c
 +++ b/tests/qemuxml2argvtest.c
-@@ -1306,6 +1306,8 @@ mymain(void)
+@@ -1314,6 +1314,8 @@ mymain(void)
              QEMU_CAPS_DEVICE, QEMU_CAPS_NODEFCONFIG);
      DO_TEST("pseries-cpu-exact", QEMU_CAPS_CHARDEV, QEMU_CAPS_DEVICE,
              QEMU_CAPS_NODEFCONFIG);

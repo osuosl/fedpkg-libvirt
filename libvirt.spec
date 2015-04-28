@@ -362,7 +362,7 @@
 
 Summary: Library providing a simple virtualization API
 Name: libvirt
-Version: 1.2.9.2
+Version: 1.2.9.3
 Release: 1%{?dist}%{?extra_release}
 License: LGPLv2+
 Group: Development/Libraries
@@ -1979,9 +1979,6 @@ exit 0
 %dir %attr(0700, root, root) %{_localstatedir}/log/libvirt/qemu/
 %ghost %dir %attr(0700, root, root) %{_localstatedir}/run/libvirt/qemu/
 %dir %attr(0750, %{qemu_user}, %{qemu_group}) %{_localstatedir}/lib/libvirt/qemu/
-%dir %attr(0750, %{qemu_user}, %{qemu_group}) %{_localstatedir}/lib/libvirt/qemu/channel/
-%dir %attr(0750, %{qemu_user}, %{qemu_group}) %{_localstatedir}/lib/libvirt/qemu/channel/target/
-%dir %attr(0711, %{qemu_user}, %{qemu_group}) %{_localstatedir}/lib/libvirt/qemu/nvram/
 %dir %attr(0750, %{qemu_user}, %{qemu_group}) %{_localstatedir}/cache/libvirt/qemu/
 %{_datadir}/augeas/lenses/libvirtd_qemu.aug
 %{_datadir}/augeas/lenses/tests/test_libvirtd_qemu.aug
@@ -2082,9 +2079,6 @@ exit 0
 %config(noreplace) %{_sysconfdir}/logrotate.d/libvirtd.qemu
 %ghost %dir %attr(0700, root, root) %{_localstatedir}/run/libvirt/qemu/
 %dir %attr(0750, %{qemu_user}, %{qemu_group}) %{_localstatedir}/lib/libvirt/qemu/
-%dir %attr(0750, %{qemu_user}, %{qemu_group}) %{_localstatedir}/lib/libvirt/qemu/channel/
-%dir %attr(0750, %{qemu_user}, %{qemu_group}) %{_localstatedir}/lib/libvirt/qemu/channel/target/
-%dir %attr(0711, %{qemu_user}, %{qemu_group}) %{_localstatedir}/lib/libvirt/qemu/nvram/
 %dir %attr(0750, %{qemu_user}, %{qemu_group}) %{_localstatedir}/cache/libvirt/qemu/
 %{_datadir}/augeas/lenses/libvirtd_qemu.aug
 %{_datadir}/augeas/lenses/tests/test_libvirtd_qemu.aug
@@ -2288,6 +2282,23 @@ exit 0
 %doc examples/systemtap
 
 %changelog
+* Tue Apr 28 2015 Cole Robinson <crobinso@redhat.com> - 1.2.9.3-1
+- Rebased to version 1.2.9.3
+- Fix getVersion() after installing qemu (bz #1000116)
+- Fix autosocket setup with qemu:///session (bz #1044561, bz #1105274)
+- Ignore storage volumes with non-ascii in names (bz #1066564)
+- Don't generate invalid system nodedev XML (bz #1184131)
+- Fix vhost-user XML (bz #1190842)
+- Fix crash via race when unrefing rpc identity object (bz #1203030)
+- Fix domcapabilities failure with ppc64le (bz #1209948)
+- Fix snapshot-revert with cpu host-passthrough (bz #1030793)
+- Fix starting VM with emulator pinning (bz #1214434)
+- Fix virDomainBlockCopyRebase selinux failure (bz #1214846)
+- Add {Haswell,Broadwell}-noTSX CPU models (bz #1182650)
+- Report original error when QMP probing fails (bz #1178054)
+- Don't lose VMs on libvirtd restart if qemu is uninstalled (bz #1099847)
+- Ignore storage volumes that libvirt can't open (bz #1103308)
+
 * Sat Feb 07 2015 Cole Robinson <crobinso@redhat.com> - 1.2.9.2-1
 - Rebased to version 1.2.9.2
 - CVE-2014-8131: deadlock and segfault in qemuConnectGetAllDomainStats (bz
