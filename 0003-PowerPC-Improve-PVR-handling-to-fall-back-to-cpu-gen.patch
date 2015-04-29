@@ -32,10 +32,10 @@ Reviewed-by: Michal Privoznik <mprivozn@redhat.com>
  2 files changed, 38 insertions(+)
 
 diff --git a/src/cpu/cpu_map.xml b/src/cpu/cpu_map.xml
-index 18c7b0d..bd9b056 100644
+index d181cd5..4ec49ca 100644
 --- a/src/cpu/cpu_map.xml
 +++ b/src/cpu/cpu_map.xml
-@@ -627,5 +627,35 @@
+@@ -637,5 +637,35 @@
        <pvr value='0x004b0100'/>
      </model>
  

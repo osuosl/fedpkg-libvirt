@@ -29,10 +29,10 @@ Acked-by: Michal Privoznik <mprivozn@redhat.com>
  3 files changed, 12 insertions(+), 10 deletions(-)
 
 diff --git a/src/conf/cpu_conf.c b/src/conf/cpu_conf.c
-index 9b7fbb0..0e7a979 100644
+index c09c352..74f0b16 100644
 --- a/src/conf/cpu_conf.c
 +++ b/src/conf/cpu_conf.c
-@@ -619,6 +619,7 @@ virCPUDefFormatBuf(virBufferPtr buf,
+@@ -624,6 +624,7 @@ virCPUDefFormatBuf(virBufferPtr buf,
          return 0;
  
      formatModel = (def->mode == VIR_CPU_MODE_CUSTOM ||

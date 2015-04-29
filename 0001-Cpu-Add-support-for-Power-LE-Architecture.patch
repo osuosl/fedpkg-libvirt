@@ -19,10 +19,10 @@ Reviewed-by: Michal Privoznik <mprivozn@redhat.com>
  6 files changed, 20 insertions(+), 16 deletions(-)
 
 diff --git a/src/conf/domain_conf.c b/src/conf/domain_conf.c
-index 6b64f51..699ffb9 100644
+index cfdf66c..8aca289 100644
 --- a/src/conf/domain_conf.c
 +++ b/src/conf/domain_conf.c
-@@ -9865,7 +9865,7 @@ virDomainVideoDefaultType(const virDomainDef *def)
+@@ -9867,7 +9867,7 @@ virDomainVideoDefaultType(const virDomainDef *def)
              (STREQ(def->os.type, "xen") ||
               STREQ(def->os.type, "linux")))
              return VIR_DOMAIN_VIDEO_TYPE_XEN;
@@ -45,7 +45,7 @@ index 67cb9ff..d591c18 100644
  struct ppc_vendor {
      char *name;
 diff --git a/src/qemu/qemu_capabilities.c b/src/qemu/qemu_capabilities.c
-index e5ed50a..363e4e2 100644
+index be4d01f..34d753c 100644
 --- a/src/qemu/qemu_capabilities.c
 +++ b/src/qemu/qemu_capabilities.c
 @@ -632,7 +632,7 @@ virQEMUCapsProbeCPUModels(virQEMUCapsPtr qemuCaps, uid_t runUid, gid_t runGid)
@@ -57,7 +57,7 @@ index e5ed50a..363e4e2 100644
          parse = virQEMUCapsParsePPCModels;
      } else {
          VIR_DEBUG("don't know how to parse %s CPU models",
-@@ -2011,7 +2011,7 @@ bool virQEMUCapsHasPCIMultiBus(virQEMUCapsPtr qemuCaps,
+@@ -2018,7 +2018,7 @@ bool virQEMUCapsHasPCIMultiBus(virQEMUCapsPtr qemuCaps,
          return true;
  
      if (def->os.arch == VIR_ARCH_PPC ||
@@ -66,7 +66,7 @@ index e5ed50a..363e4e2 100644
          /*
           * Usage of pci.0 naming:
           *
-@@ -3583,7 +3583,7 @@ virQEMUCapsSupportsChardev(virDomainDefPtr def,
+@@ -3600,7 +3600,7 @@ virQEMUCapsSupportsChardev(virDomainDefPtr def,
          !virQEMUCapsGet(qemuCaps, QEMU_CAPS_DEVICE))
          return false;
  
@@ -179,7 +179,7 @@ index aeb4eec..c5c48bf 100644
                         disk->bus = VIR_DOMAIN_DISK_BUS_SCSI;
                  }
 diff --git a/src/qemu/qemu_domain.c b/src/qemu/qemu_domain.c
-index 76fccce..e4edf34 100644
+index bec7cf2..48e8acf 100644
 --- a/src/qemu/qemu_domain.c
 +++ b/src/qemu/qemu_domain.c
 @@ -980,6 +980,7 @@ qemuDomainDefPostParse(virDomainDefPtr def,

@@ -14,7 +14,7 @@ Reviewed-by: Michal Privoznik <mprivozn@redhat.com>
  1 file changed, 14 insertions(+), 1 deletion(-)
 
 diff --git a/docs/formatdomain.html.in b/docs/formatdomain.html.in
-index e7b585c..a08af8c 100644
+index 12172a4..6c64230 100644
 --- a/docs/formatdomain.html.in
 +++ b/docs/formatdomain.html.in
 @@ -1047,7 +1047,20 @@
